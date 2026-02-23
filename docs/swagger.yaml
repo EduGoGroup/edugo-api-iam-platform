@@ -1,0 +1,1460 @@
+basePath: /api/v1
+definitions:
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreateResourceRequest:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      icon:
+        type: string
+      is_menu_visible:
+        type: boolean
+      key:
+        type: string
+      parent_id:
+        type: string
+      scope:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - display_name
+    - key
+    - scope
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details:
+        additionalProperties:
+          type: string
+        type: object
+      error:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.GrantRoleRequest:
+    properties:
+      academic_unit_id:
+        type: string
+      expires_at:
+        type: string
+      role_id:
+        type: string
+      school_id:
+        type: string
+    required:
+    - role_id
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.GrantRoleResponse:
+    properties:
+      user_role:
+        $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UserRoleDTO'
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO:
+    properties:
+      action:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      resource_id:
+        type: string
+      resource_key:
+        type: string
+      scope:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse:
+    properties:
+      permissions:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO'
+        type: array
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_menu_visible:
+        type: boolean
+      key:
+        type: string
+      parent_id:
+        type: string
+      scope:
+        type: string
+      sort_order:
+        type: integer
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse:
+    properties:
+      resources:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      scope:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse:
+    properties:
+      roles:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
+        type: array
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdateResourceRequest:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      icon:
+        type: string
+      is_active:
+        type: boolean
+      is_menu_visible:
+        type: boolean
+      parent_id:
+        type: string
+      scope:
+        type: string
+      sort_order:
+        type: integer
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UserRoleDTO:
+    properties:
+      academic_unit_id:
+        type: string
+      granted_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      role_id:
+        type: string
+      role_name:
+        type: string
+      school_id:
+        type: string
+      user_id:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.CreateInstanceRequest:
+    properties:
+      actions:
+        items:
+          type: integer
+        type: array
+      data_config:
+        items:
+          type: integer
+        type: array
+      data_endpoint:
+        type: string
+      description:
+        type: string
+      handler_key:
+        type: string
+      name:
+        type: string
+      required_permission:
+        type: string
+      scope:
+        type: string
+      screen_key:
+        type: string
+      slot_data:
+        items:
+          type: integer
+        type: array
+      template_id:
+        type: string
+    required:
+    - name
+    - screen_key
+    - template_id
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.CreateTemplateRequest:
+    properties:
+      definition:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      pattern:
+        type: string
+    required:
+    - definition
+    - name
+    - pattern
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.LinkScreenRequest:
+    properties:
+      is_default:
+        type: boolean
+      resource_id:
+        type: string
+      resource_key:
+        type: string
+      screen_key:
+        type: string
+      screen_type:
+        type: string
+    required:
+    - resource_id
+    - resource_key
+    - screen_key
+    - screen_type
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateInstanceRequest:
+    properties:
+      actions:
+        items:
+          type: integer
+        type: array
+      data_config:
+        items:
+          type: integer
+        type: array
+      data_endpoint:
+        type: string
+      description:
+        type: string
+      handler_key:
+        type: string
+      name:
+        type: string
+      required_permission:
+        type: string
+      scope:
+        type: string
+      screen_key:
+        type: string
+      slot_data:
+        items:
+          type: integer
+        type: array
+      template_id:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateTemplateRequest:
+    properties:
+      definition:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      pattern:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.AvailableContextsResponse:
+    properties:
+      available:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO'
+        type: array
+      current:
+        $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO'
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse:
+    properties:
+      code:
+        type: string
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      active_context:
+        $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO'
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      schools:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolInfo'
+        type: array
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserInfo'
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolInfo:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SwitchContextRequest:
+    properties:
+      school_id:
+        type: string
+    required:
+    - school_id
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO:
+    properties:
+      academic_unit_id:
+        type: string
+      academic_unit_name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+      role_id:
+        type: string
+      role_name:
+        type: string
+      school_id:
+        type: string
+      school_name:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserInfo:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      school_id:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.VerifyTokenRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.VerifyTokenResponse:
+    properties:
+      email:
+        type: string
+      error:
+        type: string
+      expires_at:
+        type: string
+      school_id:
+        type: string
+      user_id:
+        type: string
+      valid:
+        type: boolean
+    type: object
+host: localhost:8070
+info:
+  contact: {}
+  description: IAM Platform API for EduGo - authentication, roles, permissions, resources,
+    menu and screen configuration
+  title: EduGo API IAM Platform
+  version: "1.0"
+paths:
+  /auth/contexts:
+    get:
+      description: Return all school contexts the authenticated user has access to
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.AvailableContextsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get available school contexts
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return access/refresh tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      summary: Login with email and password
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Invalidate the current access token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Use a refresh token to get new access/refresh tokens
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/switch-context:
+    post:
+      consumes:
+      - application/json
+      description: Switch the user's active school context and get new tokens
+      parameters:
+      - description: Target school ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SwitchContextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Switch school context
+      tags:
+      - Auth
+  /auth/verify:
+    post:
+      consumes:
+      - application/json
+      description: Validate a JWT token and return its claims
+      parameters:
+      - description: Token to verify
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.VerifyTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.VerifyTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      summary: Verify JWT token
+      tags:
+      - Auth
+  /health:
+    get:
+      description: Check the health status of the IAM Platform service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check
+      tags:
+      - Health
+  /menu:
+    get:
+      description: Get the navigation menu filtered by the authenticated user's permissions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user menu
+      tags:
+      - Menu
+  /menu/full:
+    get:
+      description: Get the complete navigation menu tree without permission filtering
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get full menu
+      tags:
+      - Menu
+  /permissions:
+    get:
+      description: Get all available permissions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List permissions
+      tags:
+      - Permissions
+  /permissions/{id}:
+    get:
+      description: Get a single permission by its ID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get permission by ID
+      tags:
+      - Permissions
+  /resources:
+    get:
+      description: Get all registered resources
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List resources
+      tags:
+      - Resources
+    post:
+      consumes:
+      - application/json
+      description: Create a new resource entry
+      parameters:
+      - description: Resource data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreateResourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create resource
+      tags:
+      - Resources
+  /resources/{id}:
+    get:
+      description: Get a single resource by its ID
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get resource by ID
+      tags:
+      - Resources
+    put:
+      consumes:
+      - application/json
+      description: Update an existing resource
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated resource data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdateResourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update resource
+      tags:
+      - Resources
+  /roles:
+    get:
+      description: Get all roles, optionally filtered by scope
+      parameters:
+      - description: Filter by scope (e.g. platform, school)
+        in: query
+        name: scope
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List roles
+      tags:
+      - Roles
+  /roles/{id}:
+    get:
+      description: Get a single role by its ID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role by ID
+      tags:
+      - Roles
+  /roles/{id}/permissions:
+    get:
+      description: Get all permissions assigned to a role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role permissions
+      tags:
+      - Roles
+  /screen-config/instances:
+    get:
+      description: Get all screen instances with optional filtering
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List screen instances
+      tags:
+      - Screen Config
+    post:
+      consumes:
+      - application/json
+      description: Create a new screen configuration instance
+      parameters:
+      - description: Instance data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.CreateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create screen instance
+      tags:
+      - Screen Config
+  /screen-config/instances/{id}:
+    delete:
+      description: Delete a screen instance by its ID
+      parameters:
+      - description: Instance ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete screen instance
+      tags:
+      - Screen Config
+    get:
+      description: Get a screen instance by its ID
+      parameters:
+      - description: Instance ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get screen instance
+      tags:
+      - Screen Config
+    put:
+      consumes:
+      - application/json
+      description: Update an existing screen instance
+      parameters:
+      - description: Instance ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated instance data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update screen instance
+      tags:
+      - Screen Config
+  /screen-config/instances/key/{key}:
+    get:
+      description: Get a screen instance by its unique key
+      parameters:
+      - description: Instance key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get screen instance by key
+      tags:
+      - Screen Config
+  /screen-config/resolve/key/{key}:
+    get:
+      description: Resolve and return the combined screen configuration for a given
+        key
+      parameters:
+      - description: Screen key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resolve screen by key
+      tags:
+      - Screen Config
+  /screen-config/resource-screens:
+    post:
+      consumes:
+      - application/json
+      description: Create a link between a screen instance and a resource
+      parameters:
+      - description: Link data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.LinkScreenRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Link screen to resource
+      tags:
+      - Screen Config
+  /screen-config/resource-screens/{id}:
+    delete:
+      description: Remove the link between a screen instance and a resource
+      parameters:
+      - description: Resource-Screen link ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Unlink screen from resource
+      tags:
+      - Screen Config
+  /screen-config/resource-screens/{resourceId}:
+    get:
+      description: Get all screen instances linked to a resource
+      parameters:
+      - description: Resource ID
+        in: path
+        name: resourceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get screens for resource
+      tags:
+      - Screen Config
+  /screen-config/templates:
+    get:
+      description: Get all screen templates with optional filtering
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List screen templates
+      tags:
+      - Screen Config
+    post:
+      consumes:
+      - application/json
+      description: Create a new screen configuration template
+      parameters:
+      - description: Template data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.CreateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create screen template
+      tags:
+      - Screen Config
+  /screen-config/templates/{id}:
+    delete:
+      description: Delete a screen template by its ID
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete screen template
+      tags:
+      - Screen Config
+    get:
+      description: Get a screen template by its ID
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get screen template
+      tags:
+      - Screen Config
+    put:
+      consumes:
+      - application/json
+      description: Update an existing screen template
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated template data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update screen template
+      tags:
+      - Screen Config
+  /users/{user_id}/roles:
+    get:
+      description: Get all roles assigned to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Assign a role to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role grant request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.GrantRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.GrantRoleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Grant role to user
+      tags:
+      - Roles
+  /users/{user_id}/roles/{role_id}:
+    delete:
+      description: Remove a role assignment from a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: role_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke role from user
+      tags:
+      - Roles
+securityDefinitions:
+  BearerAuth:
+    description: 'Type "Bearer" followed by a space and the JWT token. Example: "Bearer
+      eyJhbGci..."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

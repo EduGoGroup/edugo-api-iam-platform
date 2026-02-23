@@ -1,0 +1,58 @@
+[
+  {
+    "label": "Go: Debug main (Delve)",
+    "adapter": "Delve",
+    "program": "${ZED_WORKTREE_ROOT}/cmd/main.go",
+    "cwd": "${ZED_WORKTREE_ROOT}",
+    "request": "launch",
+    "mode": "debug",
+    "stopOnEntry": false,
+    "envFile": "${ZED_WORKTREE_ROOT}/.env"
+  },
+  {
+    "label": "Go: Debug main (CLOUD MODE - Neon)",
+    "adapter": "Delve",
+    "program": "${ZED_WORKTREE_ROOT}/cmd/main.go",
+    "cwd": "${ZED_WORKTREE_ROOT}",
+    "request": "launch",
+    "mode": "debug",
+    "stopOnEntry": false,
+    "env": {
+      "APP_ENV": "development",
+      "DATABASE_POSTGRES_HOST": "ep-green-frost-ado4abbi-pooler.c-2.us-east-1.aws.neon.tech",
+      "DATABASE_POSTGRES_PORT": "5432",
+      "DATABASE_POSTGRES_USER": "neondb_owner",
+      "DATABASE_POSTGRES_PASSWORD": "npg_sC2u9pTVwQJI",
+      "DATABASE_POSTGRES_DATABASE": "edugo",
+      "DATABASE_POSTGRES_SSL_MODE": "require",
+      "AUTH_JWT_SECRET": "dev-secret-key-change-in-production",
+      "SERVER_PORT": "8070",
+      "SERVER_HOST": "0.0.0.0",
+      "LOGGING_LEVEL": "debug",
+      "LOGGING_FORMAT": "json"
+    }
+  },
+  {
+    "label": "Go: Debug main (LOCAL MODE)",
+    "adapter": "Delve",
+    "program": "${ZED_WORKTREE_ROOT}/cmd/main.go",
+    "cwd": "${ZED_WORKTREE_ROOT}",
+    "request": "launch",
+    "mode": "debug",
+    "stopOnEntry": false,
+    "env": {
+      "APP_ENV": "local",
+      "DATABASE_POSTGRES_HOST": "localhost",
+      "DATABASE_POSTGRES_PORT": "5432",
+      "DATABASE_POSTGRES_USER": "edugo",
+      "DATABASE_POSTGRES_PASSWORD": "edugo123",
+      "DATABASE_POSTGRES_DATABASE": "edugo",
+      "DATABASE_POSTGRES_SSL_MODE": "disable",
+      "AUTH_JWT_SECRET": "dev-secret-key-change-in-production",
+      "SERVER_PORT": "8070",
+      "SERVER_HOST": "0.0.0.0",
+      "LOGGING_LEVEL": "debug",
+      "LOGGING_FORMAT": "text"
+    }
+  }
+]
