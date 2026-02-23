@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -92,8 +90,3 @@ func (s *TokenService) VerifyToken(_ context.Context, token string) (*dto.Verify
 	}, nil
 }
 
-// hashToken generates a SHA256 hash of a token for cache keys
-func hashToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return "auth:token:" + hex.EncodeToString(hash[:])
-}
