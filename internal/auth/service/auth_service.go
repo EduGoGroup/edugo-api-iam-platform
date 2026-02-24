@@ -233,21 +233,38 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 	if err != nil {
 		return nil, fmt.Errorf("error checking membership: %w", err)
 	}
-	if membership == nil {
-		s.logger.Warn("switch-context attempt without membership",
-			"user_id", userID,
-			"target_school_id", targetSchoolID,
-		)
-		return nil, ErrNoMembership
-	}
 
-	activeContext := s.buildUserContext(ctx, userUUID, &schoolUUID)
-	if activeContext == nil {
-		s.logger.Error("no RBAC context found for switch-context",
-			"user_id", userID,
-			"target_school_id", targetSchoolID,
-		)
-		return nil, fmt.Errorf("user has no assigned roles in target school")
+	var activeContext *auth.UserContext
+
+	if membership == nil {
+		// No school-specific membership: check for global role (e.g. super_admin)
+		globalContext := s.buildUserContext(ctx, userUUID, nil)
+		if globalContext == nil {
+			s.logger.Warn("switch-context attempt without membership",
+				"user_id", userID,
+				"target_school_id", targetSchoolID,
+			)
+			return nil, ErrNoMembership
+		}
+		// Verify the target school exists
+		school, err := s.schoolRepo.FindByID(ctx, schoolUUID)
+		if err != nil {
+			return nil, fmt.Errorf("error verifying target school: %w", err)
+		}
+		if school == nil {
+			return nil, ErrInvalidSchoolID
+		}
+		globalContext.SchoolID = targetSchoolID
+		activeContext = globalContext
+	} else {
+		activeContext = s.buildUserContext(ctx, userUUID, &schoolUUID)
+		if activeContext == nil {
+			s.logger.Error("no RBAC context found for switch-context",
+				"user_id", userID,
+				"target_school_id", targetSchoolID,
+			)
+			return nil, fmt.Errorf("user has no assigned roles in target school")
+		}
 	}
 
 	tokenResponse, err := s.tokenService.GenerateTokenPairWithContext(
