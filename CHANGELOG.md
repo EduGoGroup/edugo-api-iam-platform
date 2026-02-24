@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tipo de Release: patch
 
+- Remove config directory copy from Dockerfile
+- Update edugo-shared/repository to use v0.1.0 module
+- chore: release v0.1.0
+- Use secrets for Postgres config in Azure deploy workflow
+- Update dependencies and remove unused hashToken function
+- docs: add CHANGELOG and version tracking
+- feat: add GitHub Actions CI/CD workflows
+- feat: add Docker and Make build configuration
+- feat: initial commit - IAM Platform API
+
+---
+
+## [0.1.0] - 2026-02-24
+
+### Tipo de Release: patch
+
 - Use secrets for Postgres config in Azure deploy workflow
 - Update dependencies and remove unused hashToken function
 - docs: add CHANGELOG and version tracking
