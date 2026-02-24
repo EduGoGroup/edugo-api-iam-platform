@@ -99,7 +99,7 @@ jobs:
             --image "$IMAGE" \
             --registry-server ${{ env.REGISTRY }} \
             --registry-username ${{ github.actor }} \
-            --registry-password "${{ secrets.GHCR_TOKEN }}" \
+            --registry-password "${{ secrets.GITHUB_TOKEN }}" \
             --target-port 8080 \
             --ingress external \
             --min-replicas 0 \
