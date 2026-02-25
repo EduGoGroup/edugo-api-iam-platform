@@ -172,16 +172,6 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.CreateInstanceRequest:
     properties:
-      actions:
-        items:
-          type: integer
-        type: array
-      data_config:
-        items:
-          type: integer
-        type: array
-      data_endpoint:
-        type: string
       description:
         type: string
       handler_key:
@@ -242,16 +232,6 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateInstanceRequest:
     properties:
-      actions:
-        items:
-          type: integer
-        type: array
-      data_config:
-        items:
-          type: integer
-        type: array
-      data_endpoint:
-        type: string
       description:
         type: string
       handler_key:
