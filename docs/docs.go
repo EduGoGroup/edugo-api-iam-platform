@@ -1907,21 +1907,6 @@ const docTemplate = `{
                 "template_id"
             ],
             "properties": {
-                "actions": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "data_config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "data_endpoint": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -2005,21 +1990,6 @@ const docTemplate = `{
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateInstanceRequest": {
             "type": "object",
             "properties": {
-                "actions": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "data_config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "data_endpoint": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },

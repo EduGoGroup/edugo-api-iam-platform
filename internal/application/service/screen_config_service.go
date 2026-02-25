@@ -59,9 +59,6 @@ type CreateInstanceRequest struct {
 	Name               string          `json:"name" binding:"required"`
 	Description        string          `json:"description"`
 	SlotData           json.RawMessage `json:"slot_data"`
-	Actions            json.RawMessage `json:"actions"`
-	DataEndpoint       string          `json:"data_endpoint"`
-	DataConfig         json.RawMessage `json:"data_config"`
 	Scope              string          `json:"scope"`
 	RequiredPermission string          `json:"required_permission"`
 	HandlerKey         *string         `json:"handler_key,omitempty"`
@@ -73,9 +70,6 @@ type UpdateInstanceRequest struct {
 	Name               *string          `json:"name"`
 	Description        *string          `json:"description"`
 	SlotData           *json.RawMessage `json:"slot_data"`
-	Actions            *json.RawMessage `json:"actions"`
-	DataEndpoint       *string          `json:"data_endpoint"`
-	DataConfig         *json.RawMessage `json:"data_config"`
 	Scope              *string          `json:"scope"`
 	RequiredPermission *string          `json:"required_permission"`
 	HandlerKey         *string          `json:"handler_key,omitempty"`
@@ -116,9 +110,6 @@ type ScreenInstanceDTO struct {
 	Name               string          `json:"name"`
 	Description        string          `json:"description,omitempty"`
 	SlotData           json.RawMessage `json:"slot_data"`
-	Actions            json.RawMessage `json:"actions"`
-	DataEndpoint       string          `json:"data_endpoint,omitempty"`
-	DataConfig         json.RawMessage `json:"data_config,omitempty"`
 	Scope              string          `json:"scope"`
 	RequiredPermission string          `json:"required_permission,omitempty"`
 	HandlerKey         *string         `json:"handler_key,omitempty"`
@@ -128,18 +119,15 @@ type ScreenInstanceDTO struct {
 }
 
 type CombinedScreenDTO struct {
-	ScreenID     string          `json:"screen_id"`
-	ScreenKey    string          `json:"screen_key"`
-	ScreenName   string          `json:"screen_name"`
-	Pattern      string          `json:"pattern"`
-	Version      int             `json:"version"`
-	Template     json.RawMessage `json:"template"`
-	SlotData     json.RawMessage `json:"slot_data"`
-	Actions      json.RawMessage `json:"actions"`
-	DataEndpoint string          `json:"data_endpoint,omitempty"`
-	DataConfig   json.RawMessage `json:"data_config,omitempty"`
-	HandlerKey   *string         `json:"handler_key,omitempty"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	ScreenID   string          `json:"screen_id"`
+	ScreenKey  string          `json:"screen_key"`
+	ScreenName string          `json:"screen_name"`
+	Pattern    string          `json:"pattern"`
+	Version    int             `json:"version"`
+	Template   json.RawMessage `json:"template"`
+	SlotData   json.RawMessage `json:"slot_data"`
+	HandlerKey *string         `json:"handler_key,omitempty"`
+	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
 type ResourceScreenDTO struct {
@@ -273,14 +261,11 @@ func (s *screenConfigService) CreateInstance(ctx context.Context, req *CreateIns
 	now := time.Now()
 	instance := &entities.ScreenInstance{
 		ID: uuid.New(), ScreenKey: req.ScreenKey, TemplateID: templateID, Name: req.Name,
-		SlotData: req.SlotData, Actions: req.Actions, DataConfig: req.DataConfig,
-		Scope: "system", IsActive: true, CreatedAt: now, UpdatedAt: now,
+		SlotData: req.SlotData,
+		Scope:    "system", IsActive: true, CreatedAt: now, UpdatedAt: now,
 	}
 	if req.Description != "" {
 		instance.Description = &req.Description
-	}
-	if req.DataEndpoint != "" {
-		instance.DataEndpoint = &req.DataEndpoint
 	}
 	if req.Scope != "" {
 		instance.Scope = req.Scope
@@ -293,9 +278,6 @@ func (s *screenConfigService) CreateInstance(ctx context.Context, req *CreateIns
 	}
 	if instance.SlotData == nil {
 		instance.SlotData = json.RawMessage(`{}`)
-	}
-	if instance.Actions == nil {
-		instance.Actions = json.RawMessage(`[]`)
 	}
 
 	if err := s.instanceRepo.Create(ctx, instance); err != nil {
@@ -376,15 +358,6 @@ func (s *screenConfigService) UpdateInstance(ctx context.Context, id string, req
 	if req.SlotData != nil {
 		instance.SlotData = *req.SlotData
 	}
-	if req.Actions != nil {
-		instance.Actions = *req.Actions
-	}
-	if req.DataEndpoint != nil {
-		instance.DataEndpoint = req.DataEndpoint
-	}
-	if req.DataConfig != nil {
-		instance.DataConfig = *req.DataConfig
-	}
 	if req.Scope != nil {
 		instance.Scope = *req.Scope
 	}
@@ -429,13 +402,7 @@ func (s *screenConfigService) ResolveScreenByKey(ctx context.Context, key string
 	combined := &CombinedScreenDTO{
 		ScreenID: instance.ID.String(), ScreenKey: instance.ScreenKey, ScreenName: instance.Name,
 		Pattern: template.Pattern, Version: template.Version, Template: template.Definition,
-		SlotData: instance.SlotData, Actions: instance.Actions, UpdatedAt: instance.UpdatedAt,
-	}
-	if instance.DataEndpoint != nil {
-		combined.DataEndpoint = *instance.DataEndpoint
-	}
-	if instance.DataConfig != nil {
-		combined.DataConfig = instance.DataConfig
+		SlotData: instance.SlotData, UpdatedAt: instance.UpdatedAt,
 	}
 	if instance.HandlerKey != nil {
 		combined.HandlerKey = instance.HandlerKey
@@ -505,14 +472,11 @@ func toTemplateDTO(t *entities.ScreenTemplate) *ScreenTemplateDTO {
 func toInstanceDTO(inst *entities.ScreenInstance) *ScreenInstanceDTO {
 	d := &ScreenInstanceDTO{
 		ID: inst.ID.String(), ScreenKey: inst.ScreenKey, TemplateID: inst.TemplateID.String(),
-		Name: inst.Name, SlotData: inst.SlotData, Actions: inst.Actions, DataConfig: inst.DataConfig,
+		Name: inst.Name, SlotData: inst.SlotData,
 		Scope: inst.Scope, IsActive: inst.IsActive, CreatedAt: inst.CreatedAt, UpdatedAt: inst.UpdatedAt,
 	}
 	if inst.Description != nil {
 		d.Description = *inst.Description
-	}
-	if inst.DataEndpoint != nil {
-		d.DataEndpoint = *inst.DataEndpoint
 	}
 	if inst.RequiredPermission != nil {
 		d.RequiredPermission = *inst.RequiredPermission
