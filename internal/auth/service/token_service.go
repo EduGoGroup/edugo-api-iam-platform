@@ -89,4 +89,3 @@ func (s *TokenService) VerifyToken(_ context.Context, token string) (*dto.Verify
 		ExpiresAt: &expiresAt,
 	}, nil
 }
-
