@@ -429,6 +429,20 @@ const docTemplate = `{
                     "Permissions"
                 ],
                 "summary": "List permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (ILIKE)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated fields to search",
+                        "name": "search_fields",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -506,6 +520,20 @@ const docTemplate = `{
                     "Resources"
                 ],
                 "summary": "List resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (ILIKE)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated fields to search",
+                        "name": "search_fields",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -699,6 +727,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by scope (e.g. platform, school)",
                         "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term (ILIKE)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated fields to search",
+                        "name": "search_fields",
                         "in": "query"
                     }
                 ],

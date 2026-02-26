@@ -2,12 +2,14 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/service"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 )
 
 type RoleHandler struct {
@@ -26,12 +28,30 @@ func NewRoleHandler(roleService service.RoleService, logger logger.Logger) *Role
 // @Produce json
 // @Security BearerAuth
 // @Param scope query string false "Filter by scope (e.g. platform, school)"
+// @Param search query string false "Search term (ILIKE)"
+// @Param search_fields query string false "Comma-separated fields to search"
 // @Success 200 {object} dto.RolesResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /roles [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
 	scope := c.Query("scope")
-	roles, err := h.roleService.GetRoles(c.Request.Context(), scope)
+	var filters sharedrepo.ListFilters
+	if search := c.Query("search"); search != "" {
+		filters.Search = search
+		if fields := c.Query("search_fields"); fields != "" {
+			rawFields := strings.Split(fields, ",")
+			cleanFields := make([]string, 0, len(rawFields))
+			for _, f := range rawFields {
+				if f = strings.TrimSpace(f); f != "" {
+					cleanFields = append(cleanFields, f)
+				}
+			}
+			if len(cleanFields) > 0 {
+				filters.SearchFields = cleanFields
+			}
+		}
+	}
+	roles, err := h.roleService.GetRoles(c.Request.Context(), scope, filters)
 	if err != nil {
 		_ = c.Error(err)
 		return

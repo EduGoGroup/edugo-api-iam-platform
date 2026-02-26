@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -22,11 +23,11 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		}
 
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) { return perms, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return perms, nil }},
 			&mockLogger{},
 		)
 
-		resp, err := svc.ListPermissions(ctx)
+		resp, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -40,11 +41,11 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("retorna lista vacía sin error", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
 			&mockLogger{},
 		)
 
-		resp, err := svc.ListPermissions(ctx)
+		resp, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -55,13 +56,13 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) {
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
 				return nil, errors.New("db error")
 			}},
 			&mockLogger{},
 		)
 
-		_, err := svc.ListPermissions(ctx)
+		_, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err == nil {
 			t.Fatal("esperaba error, no obtuvo ninguno")
 		}
@@ -71,6 +72,29 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		}
 		if appErr.Code != sharedErrors.ErrorCodeDatabaseError {
 			t.Errorf("código de error incorrecto: %s", appErr.Code)
+		}
+	})
+
+	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		svc := NewPermissionService(
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
+				capturedFilters = filters
+				return []*entities.Permission{}, nil
+			}},
+			&mockLogger{},
+		)
+
+		input := sharedrepo.ListFilters{Search: "read", SearchFields: []string{"name", "display_name"}}
+		_, err := svc.ListPermissions(ctx, input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
 		}
 	})
 }

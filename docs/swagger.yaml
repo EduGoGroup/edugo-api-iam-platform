@@ -656,6 +656,15 @@ paths:
   /permissions:
     get:
       description: Get all available permissions
+      parameters:
+      - description: Search term (ILIKE)
+        in: query
+        name: search
+        type: string
+      - description: Comma-separated fields to search
+        in: query
+        name: search_fields
+        type: string
       produces:
       - application/json
       responses:
@@ -704,6 +713,15 @@ paths:
   /resources:
     get:
       description: Get all registered resources
+      parameters:
+      - description: Search term (ILIKE)
+        in: query
+        name: search
+        type: string
+      - description: Comma-separated fields to search
+        in: query
+        name: search_fields
+        type: string
       produces:
       - application/json
       responses:
@@ -827,6 +845,14 @@ paths:
       - description: Filter by scope (e.g. platform, school)
         in: query
         name: scope
+        type: string
+      - description: Search term (ILIKE)
+        in: query
+        name: search
+        type: string
+      - description: Comma-separated fields to search
+        in: query
+        name: search_fields
         type: string
       produces:
       - application/json

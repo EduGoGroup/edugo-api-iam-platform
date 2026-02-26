@@ -7,12 +7,13 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
 // PermissionService defines the permission service interface
 type PermissionService interface {
-	ListPermissions(ctx context.Context) (*dto.PermissionsResponse, error)
+	ListPermissions(ctx context.Context, filters sharedrepo.ListFilters) (*dto.PermissionsResponse, error)
 	GetPermission(ctx context.Context, id string) (*dto.PermissionDTO, error)
 }
 
@@ -26,8 +27,8 @@ func NewPermissionService(permissionRepo repository.PermissionRepository, logger
 	return &permissionService{permissionRepo: permissionRepo, logger: logger}
 }
 
-func (s *permissionService) ListPermissions(ctx context.Context) (*dto.PermissionsResponse, error) {
-	perms, err := s.permissionRepo.FindAll(ctx)
+func (s *permissionService) ListPermissions(ctx context.Context, filters sharedrepo.ListFilters) (*dto.PermissionsResponse, error) {
+	perms, err := s.permissionRepo.FindAll(ctx, filters)
 	if err != nil {
 		return nil, errors.NewDatabaseError("list permissions", err)
 	}

@@ -9,7 +9,7 @@ import (
 	pgRepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/persistence/postgres/repository"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
-	sharedPgRepo "github.com/EduGoGroup/edugo-shared/repository/postgres"
+	sharedPgRepo "github.com/EduGoGroup/edugo-shared/repository"
 	"gorm.io/gorm"
 )
 

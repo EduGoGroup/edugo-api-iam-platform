@@ -8,6 +8,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -26,11 +27,11 @@ func TestResourceService_ListResources(t *testing.T) {
 			{ID: uuid.New(), Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true, IsMenuVisible: true},
 		}
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context) ([]*entities.Resource, error) { return resources, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return resources, nil },
 		}
 
 		svc := newResourceService(repo)
-		resp, err := svc.ListResources(ctx)
+		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -44,10 +45,10 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("retorna lista vacía correctamente", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context) ([]*entities.Resource, error) { return []*entities.Resource{}, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return []*entities.Resource{}, nil },
 		}
 		svc := newResourceService(repo)
-		resp, err := svc.ListResources(ctx)
+		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -58,11 +59,34 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context) ([]*entities.Resource, error) { return nil, errors.New("db fail") },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return nil, errors.New("db fail") },
 		}
 		svc := newResourceService(repo)
-		_, err := svc.ListResources(ctx)
+		_, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+
+	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		repo := &mockResourceRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+				capturedFilters = filters
+				return []*entities.Resource{}, nil
+			},
+		}
+		svc := newResourceService(repo)
+
+		input := sharedrepo.ListFilters{Search: "dashboard", SearchFields: []string{"key", "display_name"}}
+		_, err := svc.ListResources(ctx, input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
 	})
 }
 
