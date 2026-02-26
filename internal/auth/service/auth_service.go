@@ -13,6 +13,7 @@ import (
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Sentinel errors for auth operations
@@ -157,7 +158,7 @@ func (s *authService) Logout(_ context.Context, _ string) error {
 // RefreshToken validates a refresh token JWT and generates new access + refresh tokens
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 	// 1. Validate refresh token JWT
-	userID, email, err := s.tokenService.ValidateRefreshJWT(refreshToken)
+	userID, _, err := s.tokenService.ValidateRefreshJWT(refreshToken)
 	if err != nil {
 		return nil, ErrInvalidRefreshToken
 	}
@@ -168,7 +169,10 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, ErrInvalidRefreshToken
 	}
 	user, err := s.userRepo.FindByID(ctx, userUUID)
-	if err != nil || user == nil {
+	if err != nil {
+		return nil, fmt.Errorf("error finding user: %w", err)
+	}
+	if user == nil {
 		return nil, ErrUserNotFound
 	}
 	if !user.IsActive {
@@ -184,14 +188,14 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
 
-	// 5. Generate new access token
-	resp, err := s.tokenService.GenerateAccessTokenWithContext(userID, email, activeContext)
+	// 5. Generate new access token (use DB email, not claim email)
+	resp, err := s.tokenService.GenerateAccessTokenWithContext(userID, user.Email, activeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error generating access token: %w", err)
 	}
 
 	// 6. Generate new refresh token (rotation)
-	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, email)
+	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, user.Email)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %w", err)
 	}
@@ -204,7 +208,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		Permissions: activeContext.Permissions,
 	}
 
-	s.logger.Info("token refreshed", "user_id", userID, "email", email)
+	s.logger.Info("token refreshed", "user_id", userID, "email", user.Email)
 
 	return resp, nil
 }
@@ -276,7 +280,9 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 
 	membership, err := s.membershipRepo.FindByUserAndSchool(ctx, userUUID, schoolUUID)
 	if err != nil {
-		// ErrRecordNotFound means no membership exists - not an actual error
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("error checking membership: %w", err)
+		}
 		membership = nil
 	}
 

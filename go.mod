@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/EduGoGroup/edugo-infrastructure/postgres v0.53.0
-	github.com/EduGoGroup/edugo-shared/auth v0.50.1
+	github.com/EduGoGroup/edugo-shared/auth v0.50.2-0.20260226211216-d9a753599403
 	github.com/EduGoGroup/edugo-shared/common v0.50.2
 	github.com/EduGoGroup/edugo-shared/logger v0.50.1
 	github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.1

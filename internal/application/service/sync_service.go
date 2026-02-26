@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	authDto "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/dto"
@@ -147,7 +148,7 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 			}
 
 			hashKey := "screen:" + inst.ScreenKey
-			hashVal := hashScreen(resolved.Version, resolved.UpdatedAt.String())
+			hashVal := hashScreen(resolved.Version, resolved.UpdatedAt.UTC().Format(time.RFC3339Nano))
 
 			mu.Lock()
 			screens[inst.ScreenKey] = screenBundle
@@ -206,6 +207,7 @@ func (s *syncService) GetDeltaSync(ctx context.Context, userID string, activeCon
 	if unchanged == nil {
 		unchanged = []string{}
 	}
+	sort.Strings(unchanged)
 
 	return &dto.DeltaSyncResponse{
 		Changed:   changed,

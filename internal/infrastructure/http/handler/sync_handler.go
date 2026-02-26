@@ -24,6 +24,16 @@ func NewSyncHandler(syncService service.SyncService, logger logger.Logger) *Sync
 }
 
 // GetBundle returns the full sync bundle for the authenticated user
+// @Summary Get full sync bundle
+// @Description Returns the complete sync bundle including menu, permissions, contexts and screens
+// @Tags Sync
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.SyncBundleResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /sync/bundle [get]
 func (h *SyncHandler) GetBundle(c *gin.Context) {
 	userID, activeContext, ok := h.extractAuth(c)
 	if !ok {
@@ -44,6 +54,19 @@ func (h *SyncHandler) GetBundle(c *gin.Context) {
 }
 
 // DeltaSync returns only changed buckets based on client hashes
+// @Summary Get delta sync
+// @Description Compares client hashes with server state and returns only changed buckets
+// @Tags Sync
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.DeltaSyncRequest true "Client hashes for comparison"
+// @Success 200 {object} dto.DeltaSyncResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /sync/delta [post]
 func (h *SyncHandler) DeltaSync(c *gin.Context) {
 	userID, activeContext, ok := h.extractAuth(c)
 	if !ok {
