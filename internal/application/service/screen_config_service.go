@@ -26,6 +26,7 @@ type ScreenConfigService interface {
 	UpdateInstance(ctx context.Context, id string, req *UpdateInstanceRequest) (*ScreenInstanceDTO, error)
 	DeleteInstance(ctx context.Context, id string) error
 	ResolveScreenByKey(ctx context.Context, key string) (*CombinedScreenDTO, error)
+	GetScreenVersion(ctx context.Context, key string) (*ScreenVersionDTO, error)
 	LinkScreenToResource(ctx context.Context, req *LinkScreenRequest) (*ResourceScreenDTO, error)
 	GetScreensForResource(ctx context.Context, resourceID string) ([]*ResourceScreenDTO, error)
 	UnlinkScreen(ctx context.Context, id string) error
@@ -136,6 +137,11 @@ type ResourceScreenDTO struct {
 	ScreenKey   string `json:"screen_key"`
 	ScreenType  string `json:"screen_type"`
 	IsDefault   bool   `json:"is_default"`
+}
+
+type ScreenVersionDTO struct {
+	Version   int       `json:"version"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Implementation
@@ -408,6 +414,21 @@ func (s *screenConfigService) ResolveScreenByKey(ctx context.Context, key string
 		combined.HandlerKey = instance.HandlerKey
 	}
 	return combined, nil
+}
+
+func (s *screenConfigService) GetScreenVersion(ctx context.Context, key string) (*ScreenVersionDTO, error) {
+	instance, err := s.instanceRepo.GetByScreenKey(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	template, err := s.templateRepo.GetByID(ctx, instance.TemplateID)
+	if err != nil {
+		return nil, errors.NewDatabaseError("get template for screen version", err)
+	}
+	return &ScreenVersionDTO{
+		Version:   template.Version,
+		UpdatedAt: instance.UpdatedAt,
+	}, nil
 }
 
 func (s *screenConfigService) LinkScreenToResource(ctx context.Context, req *LinkScreenRequest) (*ResourceScreenDTO, error) {

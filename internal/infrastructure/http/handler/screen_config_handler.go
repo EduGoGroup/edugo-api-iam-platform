@@ -274,6 +274,29 @@ func (h *ScreenConfigHandler) DeleteInstance(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Version
+
+// GetScreenVersion returns the version and updated_at for a screen by key
+// @Summary Get screen version
+// @Description Returns lightweight version info for a screen configuration by key
+// @Tags Screen Config
+// @Produce json
+// @Security BearerAuth
+// @Param key path string true "Screen key"
+// @Success 200 {object} service.ScreenVersionDTO
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /screen-config/version/{key} [get]
+func (h *ScreenConfigHandler) GetScreenVersion(c *gin.Context) {
+	key := c.Param("key")
+	version, err := h.screenService.GetScreenVersion(c.Request.Context(), key)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, version)
+}
+
 // Resolve
 
 // ResolveScreenByKey resolves a screen configuration by key
