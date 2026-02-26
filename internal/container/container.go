@@ -31,6 +31,7 @@ type Container struct {
 	MenuHandler         *handler.MenuHandler
 	PermissionHandler   *handler.PermissionHandler
 	ScreenConfigHandler *handler.ScreenConfigHandler
+	SyncHandler         *handler.SyncHandler
 	HealthHandler       *handler.HealthHandler
 }
 
@@ -69,12 +70,16 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	permissionService := service.NewPermissionService(permissionRepo, log)
 	screenConfigService := service.NewScreenConfigService(screenTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
 
+	// Sync
+	syncService := service.NewSyncService(menuService, screenConfigService, c.AuthService, screenInstanceRepo, log)
+
 	// Handlers
 	c.RoleHandler = handler.NewRoleHandler(roleService, log)
 	c.ResourceHandler = handler.NewResourceHandler(resourceService, log)
 	c.MenuHandler = handler.NewMenuHandler(menuService, log)
 	c.PermissionHandler = handler.NewPermissionHandler(permissionService, log)
 	c.ScreenConfigHandler = handler.NewScreenConfigHandler(screenConfigService, log)
+	c.SyncHandler = handler.NewSyncHandler(syncService, log)
 	c.HealthHandler = handler.NewHealthHandler(db, "dev")
 
 	return c

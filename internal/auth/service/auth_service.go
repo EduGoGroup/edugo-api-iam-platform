@@ -13,6 +13,7 @@ import (
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Sentinel errors for auth operations
@@ -154,14 +155,62 @@ func (s *authService) Logout(_ context.Context, _ string) error {
 	return nil
 }
 
-// RefreshToken validates a refresh token and generates a new access token
+// RefreshToken validates a refresh token JWT and generates new access + refresh tokens
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
-	tokenHash := auth.HashToken(refreshToken)
-	if tokenHash == "" {
+	// 1. Validate refresh token JWT
+	userID, _, err := s.tokenService.ValidateRefreshJWT(refreshToken)
+	if err != nil {
 		return nil, ErrInvalidRefreshToken
 	}
-	_ = tokenHash
-	return nil, ErrInvalidRefreshToken
+
+	// 2. Find user and verify active
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, ErrInvalidRefreshToken
+	}
+	user, err := s.userRepo.FindByID(ctx, userUUID)
+	if err != nil {
+		return nil, fmt.Errorf("error finding user: %w", err)
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+	if !user.IsActive {
+		return nil, ErrUserInactive
+	}
+
+	// 3. Get user's current school from existing memberships
+	_, firstSchoolID := s.getUserSchools(ctx, userUUID)
+
+	// 4. Rebuild RBAC context
+	activeContext := s.buildUserContext(ctx, userUUID, firstSchoolID)
+	if activeContext == nil {
+		return nil, fmt.Errorf("user has no assigned roles")
+	}
+
+	// 5. Generate new access token (use DB email, not claim email)
+	resp, err := s.tokenService.GenerateAccessTokenWithContext(userID, user.Email, activeContext)
+	if err != nil {
+		return nil, fmt.Errorf("error generating access token: %w", err)
+	}
+
+	// 6. Generate new refresh token (rotation)
+	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, user.Email)
+	if err != nil {
+		return nil, fmt.Errorf("error generating refresh token: %w", err)
+	}
+
+	resp.RefreshToken = newRefreshJWT
+	resp.ActiveContext = &dto.UserContextDTO{
+		RoleID:      activeContext.RoleID,
+		RoleName:    activeContext.RoleName,
+		SchoolID:    activeContext.SchoolID,
+		Permissions: activeContext.Permissions,
+	}
+
+	s.logger.Info("token refreshed", "user_id", userID, "email", user.Email)
+
+	return resp, nil
 }
 
 // getUserSchools devuelve las escuelas activas del usuario desde memberships.
@@ -231,7 +280,10 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 
 	membership, err := s.membershipRepo.FindByUserAndSchool(ctx, userUUID, schoolUUID)
 	if err != nil {
-		return nil, fmt.Errorf("error checking membership: %w", err)
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("error checking membership: %w", err)
+		}
+		membership = nil
 	}
 
 	var activeContext *auth.UserContext

@@ -94,7 +94,7 @@ func NewPostgresUserRoleRepository(db *gorm.DB) repository.UserRoleRepository {
 
 func (r *postgresUserRoleRepository) FindByUser(ctx context.Context, userID uuid.UUID) ([]*entities.UserRole, error) {
 	var userRoles []*entities.UserRole
-	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = true", userID).Find(&userRoles).Error
+	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = true", userID).Order("id").Find(&userRoles).Error
 	return userRoles, err
 }
 
@@ -144,7 +144,8 @@ func (r *postgresUserRoleRepository) GetUserPermissions(ctx context.Context, use
 	query := `SELECT DISTINCT p.name FROM iam.permissions p
 		INNER JOIN iam.role_permissions rp ON p.id = rp.permission_id
 		INNER JOIN iam.user_roles ur ON rp.role_id = ur.role_id
-		WHERE ur.user_id = ? AND ur.is_active = true AND p.is_active = true`
+		WHERE ur.user_id = ? AND ur.is_active = true AND p.is_active = true
+		ORDER BY p.name`
 	args := []interface{}{userID}
 	if schoolID != nil {
 		query += ` AND ur.school_id = ?`

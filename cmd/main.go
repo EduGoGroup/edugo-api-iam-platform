@@ -160,6 +160,13 @@ func main() {
 			users.DELETE("/:user_id/roles/:role_id", c.RoleHandler.RevokeRole)
 		}
 
+		// Sync
+		syncGroup := v1.Group("/sync")
+		{
+			syncGroup.GET("/bundle", c.SyncHandler.GetBundle)
+			syncGroup.POST("/delta", c.SyncHandler.DeltaSync)
+		}
+
 		// Screen Config
 		screenConfig := v1.Group("/screen-config")
 		{
@@ -180,6 +187,7 @@ func main() {
 				instances.PUT("/:id", c.ScreenConfigHandler.UpdateInstance)
 				instances.DELETE("/:id", c.ScreenConfigHandler.DeleteInstance)
 			}
+			screenConfig.GET("/version/:key", c.ScreenConfigHandler.GetScreenVersion)
 			resolve := screenConfig.Group("/resolve")
 			{
 				resolve.GET("/key/:key", c.ScreenConfigHandler.ResolveScreenByKey)
