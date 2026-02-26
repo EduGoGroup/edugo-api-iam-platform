@@ -9,12 +9,13 @@ import (
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
 // ResourceService defines the resource service interface
 type ResourceService interface {
-	ListResources(ctx context.Context) (*dto.ResourcesResponse, error)
+	ListResources(ctx context.Context, filters sharedrepo.ListFilters) (*dto.ResourcesResponse, error)
 	GetResource(ctx context.Context, id string) (*dto.ResourceDTO, error)
 	CreateResource(ctx context.Context, req dto.CreateResourceRequest) (*dto.ResourceDTO, error)
 	UpdateResource(ctx context.Context, id string, req dto.UpdateResourceRequest) (*dto.ResourceDTO, error)
@@ -30,8 +31,8 @@ func NewResourceService(resourceRepo repository.ResourceRepository, logger logge
 	return &resourceService{resourceRepo: resourceRepo, logger: logger}
 }
 
-func (s *resourceService) ListResources(ctx context.Context) (*dto.ResourcesResponse, error) {
-	resources, err := s.resourceRepo.FindAll(ctx)
+func (s *resourceService) ListResources(ctx context.Context, filters sharedrepo.ListFilters) (*dto.ResourcesResponse, error) {
+	resources, err := s.resourceRepo.FindAll(ctx, filters)
 	if err != nil {
 		return nil, errors.NewDatabaseError("list resources", err)
 	}

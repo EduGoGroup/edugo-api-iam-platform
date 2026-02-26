@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -22,11 +23,11 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		}
 
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) { return perms, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return perms, nil }},
 			&mockLogger{},
 		)
 
-		resp, err := svc.ListPermissions(ctx)
+		resp, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -40,11 +41,11 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("retorna lista vacía sin error", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
 			&mockLogger{},
 		)
 
-		resp, err := svc.ListPermissions(ctx)
+		resp, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -55,13 +56,13 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context) ([]*entities.Permission, error) {
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
 				return nil, errors.New("db error")
 			}},
 			&mockLogger{},
 		)
 
-		_, err := svc.ListPermissions(ctx)
+		_, err := svc.ListPermissions(ctx, sharedrepo.ListFilters{})
 		if err == nil {
 			t.Fatal("esperaba error, no obtuvo ninguno")
 		}

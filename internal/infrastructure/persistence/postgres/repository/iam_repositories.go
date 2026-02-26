@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -30,15 +31,19 @@ func (r *postgresRoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*e
 	return &role, nil
 }
 
-func (r *postgresRoleRepository) FindAll(ctx context.Context) ([]*entities.Role, error) {
+func (r *postgresRoleRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+	query := r.db.WithContext(ctx).Where("is_active = true")
+	query = filters.ApplySearch(query)
 	var roles []*entities.Role
-	err := r.db.WithContext(ctx).Where("is_active = true").Order("name").Find(&roles).Error
+	err := query.Order("name").Find(&roles).Error
 	return roles, err
 }
 
-func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string) ([]*entities.Role, error) {
+func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+	query := r.db.WithContext(ctx).Where("scope = ? AND is_active = true", scope)
+	query = filters.ApplySearch(query)
 	var roles []*entities.Role
-	err := r.db.WithContext(ctx).Where("scope = ? AND is_active = true", scope).Order("name").Find(&roles).Error
+	err := query.Order("name").Find(&roles).Error
 	return roles, err
 }
 
@@ -61,9 +66,11 @@ func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUI
 	return &p, nil
 }
 
-func (r *postgresPermissionRepository) FindAll(ctx context.Context) ([]*entities.Permission, error) {
+func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
+	query := r.db.WithContext(ctx).Where("is_active = true")
+	query = filters.ApplySearch(query)
 	var perms []*entities.Permission
-	err := r.db.WithContext(ctx).Where("is_active = true").Order("name").Find(&perms).Error
+	err := query.Order("name").Find(&perms).Error
 	return perms, err
 }
 
@@ -160,9 +167,11 @@ func NewPostgresResourceRepository(db *gorm.DB) repository.ResourceRepository {
 	return &postgresResourceRepository{db: db}
 }
 
-func (r *postgresResourceRepository) FindAll(ctx context.Context) ([]*entities.Resource, error) {
+func (r *postgresResourceRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+	query := r.db.WithContext(ctx).Where("is_active = true")
+	query = filters.ApplySearch(query)
 	var resources []*entities.Resource
-	err := r.db.WithContext(ctx).Where("is_active = true").Order("sort_order").Find(&resources).Error
+	err := query.Order("sort_order").Find(&resources).Error
 	return resources, err
 }
 
