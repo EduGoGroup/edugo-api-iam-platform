@@ -37,9 +37,11 @@ type LoginResponse struct {
 
 // RefreshResponse represents the refresh token response
 type RefreshResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+	AccessToken   string          `json:"access_token"`
+	RefreshToken  string          `json:"refresh_token"`
+	ExpiresIn     int64           `json:"expires_in"`
+	TokenType     string          `json:"token_type"`
+	ActiveContext *UserContextDTO `json:"active_context,omitempty"`
 }
 
 // VerifyTokenResponse represents the verify token response
