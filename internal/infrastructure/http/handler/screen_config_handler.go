@@ -283,7 +283,7 @@ func (h *ScreenConfigHandler) DeleteInstance(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param key path string true "Screen key"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} service.ScreenVersionDTO
 // @Failure 404 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /screen-config/version/{key} [get]
