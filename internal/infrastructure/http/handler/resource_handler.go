@@ -27,6 +27,8 @@ func NewResourceHandler(resourceService service.ResourceService, logger logger.L
 // @Tags Resources
 // @Produce json
 // @Security BearerAuth
+// @Param search query string false "Search term (ILIKE)"
+// @Param search_fields query string false "Comma-separated fields to search"
 // @Success 200 {object} dto.ResourcesResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /resources [get]
@@ -35,7 +37,16 @@ func (h *ResourceHandler) ListResources(c *gin.Context) {
 	if search := c.Query("search"); search != "" {
 		filters.Search = search
 		if fields := c.Query("search_fields"); fields != "" {
-			filters.SearchFields = strings.Split(fields, ",")
+			rawFields := strings.Split(fields, ",")
+			cleanFields := make([]string, 0, len(rawFields))
+			for _, f := range rawFields {
+				if f = strings.TrimSpace(f); f != "" {
+					cleanFields = append(cleanFields, f)
+				}
+			}
+			if len(cleanFields) > 0 {
+				filters.SearchFields = cleanFields
+			}
 		}
 	}
 	resources, err := h.resourceService.ListResources(c.Request.Context(), filters)

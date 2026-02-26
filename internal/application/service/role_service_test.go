@@ -85,6 +85,52 @@ func TestRoleService_GetRoles(t *testing.T) {
 		_, err := svc.GetRoles(ctx, "school", sharedrepo.ListFilters{})
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
 	})
+
+	t.Run("pasa filtros al repositorio en FindAll correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+				capturedFilters = filters
+				return []*entities.Role{}, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		input := sharedrepo.ListFilters{Search: "admin", SearchFields: []string{"name"}}
+		_, err := svc.GetRoles(ctx, "", input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
+
+	t.Run("pasa filtros al repositorio en FindByScope correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		roleRepo := &mockRoleRepo{
+			findByScopeFn: func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+				capturedFilters = filters
+				return []*entities.Role{}, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		input := sharedrepo.ListFilters{Search: "teacher", SearchFields: []string{"display_name"}}
+		_, err := svc.GetRoles(ctx, "school", input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
 }
 
 // ─── GetRole ─────────────────────────────────────────────────────────────────

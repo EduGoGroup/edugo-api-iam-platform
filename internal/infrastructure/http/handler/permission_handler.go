@@ -40,7 +40,16 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 	if search := c.Query("search"); search != "" {
 		filters.Search = search
 		if fields := c.Query("search_fields"); fields != "" {
-			filters.SearchFields = strings.Split(fields, ",")
+			rawFields := strings.Split(fields, ",")
+			cleanFields := make([]string, 0, len(rawFields))
+			for _, f := range rawFields {
+				if f = strings.TrimSpace(f); f != "" {
+					cleanFields = append(cleanFields, f)
+				}
+			}
+			if len(cleanFields) > 0 {
+				filters.SearchFields = cleanFields
+			}
 		}
 	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)

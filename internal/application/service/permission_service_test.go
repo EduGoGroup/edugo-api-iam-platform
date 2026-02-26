@@ -74,6 +74,29 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 			t.Errorf("código de error incorrecto: %s", appErr.Code)
 		}
 	})
+
+	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		svc := NewPermissionService(
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
+				capturedFilters = filters
+				return []*entities.Permission{}, nil
+			}},
+			&mockLogger{},
+		)
+
+		input := sharedrepo.ListFilters{Search: "read", SearchFields: []string{"name", "display_name"}}
+		_, err := svc.ListPermissions(ctx, input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
 }
 
 func TestPermissionService_GetPermission(t *testing.T) {

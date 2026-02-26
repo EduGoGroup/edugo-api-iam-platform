@@ -65,6 +65,29 @@ func TestResourceService_ListResources(t *testing.T) {
 		_, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
 	})
+
+	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
+		var capturedFilters sharedrepo.ListFilters
+		repo := &mockResourceRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+				capturedFilters = filters
+				return []*entities.Resource{}, nil
+			},
+		}
+		svc := newResourceService(repo)
+
+		input := sharedrepo.ListFilters{Search: "dashboard", SearchFields: []string{"key", "display_name"}}
+		_, err := svc.ListResources(ctx, input)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedFilters.Search != input.Search {
+			t.Errorf("Search no fue pasado: esperaba %q, obtuvo %q", input.Search, capturedFilters.Search)
+		}
+		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
+			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
 }
 
 // ─── GetResource ─────────────────────────────────────────────────────────────

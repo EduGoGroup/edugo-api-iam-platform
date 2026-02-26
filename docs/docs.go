@@ -520,6 +520,20 @@ const docTemplate = `{
                     "Resources"
                 ],
                 "summary": "List resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (ILIKE)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated fields to search",
+                        "name": "search_fields",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
