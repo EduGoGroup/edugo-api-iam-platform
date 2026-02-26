@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 
+	domainrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/logger"
-	domainrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -25,8 +26,8 @@ func (m *mockLogger) With(fields ...interface{}) logger.Logger { return m }
 
 type mockRoleRepo struct {
 	findByIDFn    func(ctx context.Context, id uuid.UUID) (*entities.Role, error)
-	findAllFn     func(ctx context.Context) ([]*entities.Role, error)
-	findByScopeFn func(ctx context.Context, scope string) ([]*entities.Role, error)
+	findAllFn     func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error)
+	findByScopeFn func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error)
 }
 
 func (m *mockRoleRepo) FindByID(ctx context.Context, id uuid.UUID) (*entities.Role, error) {
@@ -35,15 +36,15 @@ func (m *mockRoleRepo) FindByID(ctx context.Context, id uuid.UUID) (*entities.Ro
 	}
 	return nil, nil
 }
-func (m *mockRoleRepo) FindAll(ctx context.Context) ([]*entities.Role, error) {
+func (m *mockRoleRepo) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
 	if m.findAllFn != nil {
-		return m.findAllFn(ctx)
+		return m.findAllFn(ctx, filters)
 	}
 	return nil, nil
 }
-func (m *mockRoleRepo) FindByScope(ctx context.Context, scope string) ([]*entities.Role, error) {
+func (m *mockRoleRepo) FindByScope(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
 	if m.findByScopeFn != nil {
-		return m.findByScopeFn(ctx, scope)
+		return m.findByScopeFn(ctx, scope, filters)
 	}
 	return nil, nil
 }
@@ -52,7 +53,7 @@ func (m *mockRoleRepo) FindByScope(ctx context.Context, scope string) ([]*entiti
 
 type mockPermissionRepo struct {
 	findByIDFn   func(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
-	findAllFn    func(ctx context.Context) ([]*entities.Permission, error)
+	findAllFn    func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error)
 	findByRoleFn func(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
 }
 
@@ -62,9 +63,9 @@ func (m *mockPermissionRepo) FindByID(ctx context.Context, id uuid.UUID) (*entit
 	}
 	return nil, nil
 }
-func (m *mockPermissionRepo) FindAll(ctx context.Context) ([]*entities.Permission, error) {
+func (m *mockPermissionRepo) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
 	if m.findAllFn != nil {
-		return m.findAllFn(ctx)
+		return m.findAllFn(ctx, filters)
 	}
 	return nil, nil
 }
@@ -133,16 +134,16 @@ func (m *mockUserRoleRepo) GetUserPermissions(ctx context.Context, userID uuid.U
 // ─── ResourceRepository mock ─────────────────────────────────────────────────
 
 type mockResourceRepo struct {
-	findAllFn         func(ctx context.Context) ([]*entities.Resource, error)
+	findAllFn         func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error)
 	findByIDFn        func(ctx context.Context, id uuid.UUID) (*entities.Resource, error)
 	findMenuVisibleFn func(ctx context.Context) ([]*entities.Resource, error)
 	createFn          func(ctx context.Context, resource *entities.Resource) error
 	updateFn          func(ctx context.Context, resource *entities.Resource) error
 }
 
-func (m *mockResourceRepo) FindAll(ctx context.Context) ([]*entities.Resource, error) {
+func (m *mockResourceRepo) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
 	if m.findAllFn != nil {
-		return m.findAllFn(ctx)
+		return m.findAllFn(ctx, filters)
 	}
 	return nil, nil
 }

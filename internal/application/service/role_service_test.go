@@ -9,6 +9,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -27,11 +28,11 @@ func TestRoleService_GetRoles(t *testing.T) {
 			{ID: uuid.New(), Name: "teacher", DisplayName: "Teacher", Scope: "school", IsActive: true},
 		}
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context) ([]*entities.Role, error) { return roles, nil },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return roles, nil },
 		}
 
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
-		resp, err := svc.GetRoles(ctx, "")
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -46,14 +47,14 @@ func TestRoleService_GetRoles(t *testing.T) {
 		}
 		var capturedScope string
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string) ([]*entities.Role, error) {
+			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, error) {
 				capturedScope = scope
 				return roles, nil
 			},
 		}
 
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
-		resp, err := svc.GetRoles(ctx, "school")
+		resp, err := svc.GetRoles(ctx, "school", sharedrepo.ListFilters{})
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
@@ -67,21 +68,21 @@ func TestRoleService_GetRoles(t *testing.T) {
 
 	t.Run("propaga error de base de datos en FindAll", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context) ([]*entities.Role, error) { return nil, errors.New("db error") },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return nil, errors.New("db error") },
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
-		_, err := svc.GetRoles(ctx, "")
+		_, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{})
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
 	})
 
 	t.Run("propaga error de base de datos en FindByScope", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string) ([]*entities.Role, error) { return nil, errors.New("db error") },
+			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return nil, errors.New("db error") },
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
-		_, err := svc.GetRoles(ctx, "school")
+		_, err := svc.GetRoles(ctx, "school", sharedrepo.ListFilters{})
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
 	})
 }

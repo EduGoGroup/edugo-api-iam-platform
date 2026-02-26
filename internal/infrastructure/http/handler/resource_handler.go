@@ -2,12 +2,14 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/service"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 )
 
 type ResourceHandler struct {
@@ -29,7 +31,14 @@ func NewResourceHandler(resourceService service.ResourceService, logger logger.L
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /resources [get]
 func (h *ResourceHandler) ListResources(c *gin.Context) {
-	resources, err := h.resourceService.ListResources(c.Request.Context())
+	var filters sharedrepo.ListFilters
+	if search := c.Query("search"); search != "" {
+		filters.Search = search
+		if fields := c.Query("search_fields"); fields != "" {
+			filters.SearchFields = strings.Split(fields, ",")
+		}
+	}
+	resources, err := h.resourceService.ListResources(c.Request.Context(), filters)
 	if err != nil {
 		_ = c.Error(err)
 		return

@@ -9,12 +9,13 @@ import (
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
 // RoleService defines the role service interface
 type RoleService interface {
-	GetRoles(ctx context.Context, scope string) (*dto.RolesResponse, error)
+	GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error)
 	GetRole(ctx context.Context, id string) (*dto.RoleDTO, error)
 	GetRolePermissions(ctx context.Context, roleID string) (*dto.PermissionsResponse, error)
 	GetUserRoles(ctx context.Context, userID string) (*dto.UserRolesResponse, error)
@@ -34,13 +35,13 @@ func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repositor
 	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, logger: logger}
 }
 
-func (s *roleService) GetRoles(ctx context.Context, scope string) (*dto.RolesResponse, error) {
+func (s *roleService) GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error) {
 	var roles []*entities.Role
 	var err error
 	if scope != "" {
-		roles, err = s.roleRepo.FindByScope(ctx, scope)
+		roles, err = s.roleRepo.FindByScope(ctx, scope, filters)
 	} else {
-		roles, err = s.roleRepo.FindAll(ctx)
+		roles, err = s.roleRepo.FindAll(ctx, filters)
 	}
 	if err != nil {
 		return nil, errors.NewDatabaseError("list roles", err)

@@ -166,7 +166,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 // getUserSchools devuelve las escuelas activas del usuario desde memberships.
 func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]dto.SchoolInfo, *uuid.UUID) {
-	memberships, err := s.membershipRepo.FindByUser(ctx, userID)
+	memberships, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{})
 	if err != nil {
 		s.logger.Warn("error fetching memberships for user", "user_id", userID.String(), "error", err)
 		return []dto.SchoolInfo{}, nil
