@@ -94,7 +94,7 @@ func NewPostgresUserRoleRepository(db *gorm.DB) repository.UserRoleRepository {
 
 func (r *postgresUserRoleRepository) FindByUser(ctx context.Context, userID uuid.UUID) ([]*entities.UserRole, error) {
 	var userRoles []*entities.UserRole
-	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = true", userID).Order("id").Find(&userRoles).Error
+	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = true", userID).Order("school_id ASC, role_id ASC, academic_unit_id ASC").Find(&userRoles).Error
 	return userRoles, err
 }
 
