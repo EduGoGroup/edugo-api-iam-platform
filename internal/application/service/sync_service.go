@@ -124,7 +124,10 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 				if resp.Available[i].SchoolID != resp.Available[j].SchoolID {
 					return resp.Available[i].SchoolID < resp.Available[j].SchoolID
 				}
-				return resp.Available[i].RoleID < resp.Available[j].RoleID
+				if resp.Available[i].RoleID != resp.Available[j].RoleID {
+					return resp.Available[i].RoleID < resp.Available[j].RoleID
+				}
+				return resp.Available[i].AcademicUnitID < resp.Available[j].AcademicUnitID
 			})
 			mu.Lock()
 			bundle.AvailableContexts = resp.Available
