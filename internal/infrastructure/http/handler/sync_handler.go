@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,10 +26,11 @@ func NewSyncHandler(syncService service.SyncService, logger logger.Logger) *Sync
 
 // GetBundle returns the full sync bundle for the authenticated user
 // @Summary Get full sync bundle
-// @Description Returns the complete sync bundle including menu, permissions, contexts and screens
+// @Description Returns the sync bundle. Use ?buckets=menu,permissions,available_contexts,screens to load specific buckets only.
 // @Tags Sync
 // @Produce json
 // @Security BearerAuth
+// @Param buckets query string false "Comma-separated bucket names to load (menu,permissions,available_contexts,screens). Empty = all."
 // @Success 200 {object} dto.SyncBundleResponse
 // @Failure 401 {object} dto.ErrorResponse
 // @Failure 403 {object} dto.ErrorResponse
@@ -40,7 +42,18 @@ func (h *SyncHandler) GetBundle(c *gin.Context) {
 		return
 	}
 
-	bundle, err := h.syncService.GetFullBundle(c.Request.Context(), userID, activeContext)
+	// Parse optional buckets filter
+	var buckets []string
+	if bucketsParam := c.Query("buckets"); bucketsParam != "" {
+		for _, b := range strings.Split(bucketsParam, ",") {
+			b = strings.TrimSpace(b)
+			if b != "" {
+				buckets = append(buckets, b)
+			}
+		}
+	}
+
+	bundle, err := h.syncService.GetFullBundle(c.Request.Context(), userID, activeContext, buckets)
 	if err != nil {
 		h.logger.Error("error building sync bundle", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{

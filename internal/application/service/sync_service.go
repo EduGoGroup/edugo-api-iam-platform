@@ -21,7 +21,7 @@ import (
 
 // SyncService defines the sync service interface
 type SyncService interface {
-	GetFullBundle(ctx context.Context, userID string, activeContext *auth.UserContext) (*dto.SyncBundleResponse, error)
+	GetFullBundle(ctx context.Context, userID string, activeContext *auth.UserContext, buckets []string) (*dto.SyncBundleResponse, error)
 	GetDeltaSync(ctx context.Context, userID string, activeContext *auth.UserContext, clientHashes map[string]string) (*dto.DeltaSyncResponse, error)
 }
 
@@ -50,8 +50,10 @@ func NewSyncService(
 	}
 }
 
-// GetFullBundle builds the complete sync bundle for a user
-func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeContext *auth.UserContext) (*dto.SyncBundleResponse, error) {
+// GetFullBundle builds the sync bundle for a user.
+// If buckets is non-empty, only the specified buckets are loaded (e.g. ["menu","permissions","available_contexts","screens"]).
+// If buckets is empty, all buckets are loaded (backward compatible).
+func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeContext *auth.UserContext, buckets []string) (*dto.SyncBundleResponse, error) {
 	var (
 		mu      sync.Mutex
 		bundle  dto.SyncBundleResponse
@@ -62,101 +64,116 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 	bundle.Hashes = hashes
 	bundle.Screens = screens
 
+	// Build a set of requested buckets for fast lookup
+	bucketSet := make(map[string]bool, len(buckets))
+	for _, b := range buckets {
+		bucketSet[b] = true
+	}
+	loadAll := len(buckets) == 0
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	// 1. Menu
-	g.Go(func() error {
-		menu, err := s.menuService.GetMenuForUser(gCtx, activeContext.Permissions)
-		if err != nil {
-			s.logger.Warn("sync: error fetching menu", "user_id", userID, "error", err)
+	if loadAll || bucketSet["menu"] {
+		g.Go(func() error {
+			menu, err := s.menuService.GetMenuForUser(gCtx, activeContext.Permissions)
+			if err != nil {
+				s.logger.Warn("sync: error fetching menu", "user_id", userID, "error", err)
+				mu.Lock()
+				bundle.Menu = []dto.MenuItemDTO{}
+				hashes["menu"] = hashJSON([]dto.MenuItemDTO{})
+				mu.Unlock()
+				return nil
+			}
 			mu.Lock()
-			bundle.Menu = []dto.MenuItemDTO{}
-			hashes["menu"] = hashJSON([]dto.MenuItemDTO{})
+			bundle.Menu = menu.Items
+			hashes["menu"] = hashJSON(menu.Items)
 			mu.Unlock()
 			return nil
-		}
-		mu.Lock()
-		bundle.Menu = menu.Items
-		hashes["menu"] = hashJSON(menu.Items)
-		mu.Unlock()
-		return nil
-	})
+		})
+	}
 
 	// 2. Permissions
-	g.Go(func() error {
-		perms := activeContext.Permissions
-		if perms == nil {
-			perms = []string{}
-		}
-		mu.Lock()
-		bundle.Permissions = perms
-		hashes["permissions"] = hashPermissions(perms)
-		mu.Unlock()
-		return nil
-	})
+	if loadAll || bucketSet["permissions"] {
+		g.Go(func() error {
+			perms := activeContext.Permissions
+			if perms == nil {
+				perms = []string{}
+			}
+			mu.Lock()
+			bundle.Permissions = perms
+			hashes["permissions"] = hashPermissions(perms)
+			mu.Unlock()
+			return nil
+		})
+	}
 
 	// 3. Available contexts
-	g.Go(func() error {
-		resp, err := s.authService.GetAvailableContexts(gCtx, userID, activeContext)
-		if err != nil {
-			s.logger.Warn("sync: error fetching available contexts", "user_id", userID, "error", err)
+	if loadAll || bucketSet["available_contexts"] {
+		g.Go(func() error {
+			resp, err := s.authService.GetAvailableContexts(gCtx, userID, activeContext)
+			if err != nil {
+				s.logger.Warn("sync: error fetching available contexts", "user_id", userID, "error", err)
+				mu.Lock()
+				bundle.AvailableContexts = []*authDto.UserContextDTO{}
+				hashes["available_contexts"] = hashJSON([]*authDto.UserContextDTO{})
+				mu.Unlock()
+				return nil
+			}
+			sort.Slice(resp.Available, func(i, j int) bool {
+				if resp.Available[i].SchoolID != resp.Available[j].SchoolID {
+					return resp.Available[i].SchoolID < resp.Available[j].SchoolID
+				}
+				return resp.Available[i].RoleID < resp.Available[j].RoleID
+			})
 			mu.Lock()
-			bundle.AvailableContexts = []*authDto.UserContextDTO{}
-			hashes["available_contexts"] = hashJSON([]*authDto.UserContextDTO{})
+			bundle.AvailableContexts = resp.Available
+			hashes["available_contexts"] = hashJSON(resp.Available)
 			mu.Unlock()
 			return nil
-		}
-		sort.Slice(resp.Available, func(i, j int) bool {
-			if resp.Available[i].SchoolID != resp.Available[j].SchoolID {
-				return resp.Available[i].SchoolID < resp.Available[j].SchoolID
-			}
-			return resp.Available[i].RoleID < resp.Available[j].RoleID
 		})
-		mu.Lock()
-		bundle.AvailableContexts = resp.Available
-		hashes["available_contexts"] = hashJSON(resp.Available)
-		mu.Unlock()
-		return nil
-	})
+	}
 
 	// 4. Screens
-	g.Go(func() error {
-		instances, _, err := s.screenInstanceRepo.List(gCtx, repository.ScreenInstanceFilter{
-			Offset: 0,
-			Limit:  1000,
-		})
-		if err != nil {
-			s.logger.Warn("sync: error listing screen instances", "user_id", userID, "error", err)
-			return nil
-		}
-
-		for _, inst := range instances {
-			resolved, err := s.screenConfigService.ResolveScreenByKey(gCtx, inst.ScreenKey)
+	if loadAll || bucketSet["screens"] {
+		g.Go(func() error {
+			instances, _, err := s.screenInstanceRepo.List(gCtx, repository.ScreenInstanceFilter{
+				Offset: 0,
+				Limit:  1000,
+			})
 			if err != nil {
-				s.logger.Warn("sync: error resolving screen", "key", inst.ScreenKey, "error", err)
-				continue
+				s.logger.Warn("sync: error listing screen instances", "user_id", userID, "error", err)
+				return nil
 			}
 
-			screenBundle := &dto.ScreenBundle{
-				ScreenKey:  resolved.ScreenKey,
-				ScreenName: resolved.ScreenName,
-				Pattern:    resolved.Pattern,
-				Version:    resolved.Version,
-				Template:   resolved.Template,
-				SlotData:   resolved.SlotData,
-				HandlerKey: resolved.HandlerKey,
+			for _, inst := range instances {
+				resolved, err := s.screenConfigService.ResolveScreenByKey(gCtx, inst.ScreenKey)
+				if err != nil {
+					s.logger.Warn("sync: error resolving screen", "key", inst.ScreenKey, "error", err)
+					continue
+				}
+
+				screenBundle := &dto.ScreenBundle{
+					ScreenKey:  resolved.ScreenKey,
+					ScreenName: resolved.ScreenName,
+					Pattern:    resolved.Pattern,
+					Version:    resolved.Version,
+					Template:   resolved.Template,
+					SlotData:   resolved.SlotData,
+					HandlerKey: resolved.HandlerKey,
+				}
+
+				hashKey := "screen:" + inst.ScreenKey
+				hashVal := hashScreen(resolved.Version, resolved.UpdatedAt.UTC().Format(time.RFC3339Nano))
+
+				mu.Lock()
+				screens[inst.ScreenKey] = screenBundle
+				hashes[hashKey] = hashVal
+				mu.Unlock()
 			}
-
-			hashKey := "screen:" + inst.ScreenKey
-			hashVal := hashScreen(resolved.Version, resolved.UpdatedAt.UTC().Format(time.RFC3339Nano))
-
-			mu.Lock()
-			screens[inst.ScreenKey] = screenBundle
-			hashes[hashKey] = hashVal
-			mu.Unlock()
-		}
-		return nil
-	})
+			return nil
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		return nil, fmt.Errorf("error building sync bundle: %w", err)
@@ -177,7 +194,7 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 
 // GetDeltaSync compares client hashes and returns only changed buckets
 func (s *syncService) GetDeltaSync(ctx context.Context, userID string, activeContext *auth.UserContext, clientHashes map[string]string) (*dto.DeltaSyncResponse, error) {
-	fullBundle, err := s.GetFullBundle(ctx, userID, activeContext)
+	fullBundle, err := s.GetFullBundle(ctx, userID, activeContext, nil)
 	if err != nil {
 		return nil, err
 	}
