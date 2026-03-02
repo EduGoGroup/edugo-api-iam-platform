@@ -3,18 +3,19 @@ module github.com/EduGoGroup/edugo-api-iam-platform
 go 1.25.0
 
 require (
-	github.com/EduGoGroup/edugo-infrastructure/postgres v0.54.0
-	github.com/EduGoGroup/edugo-shared/auth v0.51.0
-	github.com/EduGoGroup/edugo-shared/common v0.50.2
+	github.com/EduGoGroup/edugo-infrastructure/postgres v0.57.0
+	github.com/EduGoGroup/edugo-shared/auth v0.51.1
+	github.com/EduGoGroup/edugo-shared/common v0.51.0
 	github.com/EduGoGroup/edugo-shared/logger v0.50.1
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.1
-	github.com/EduGoGroup/edugo-shared/repository v0.3.0
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2
+	github.com/EduGoGroup/edugo-shared/repository v0.3.1
 	github.com/caarlos0/env/v11 v11.4.0
-	github.com/gin-gonic/gin v1.11.0
+	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
+	golang.org/x/sync v0.19.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -61,6 +62,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
@@ -68,7 +70,6 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
