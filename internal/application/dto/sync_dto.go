@@ -21,8 +21,8 @@ type ScreenBundle struct {
 	ScreenName string          `json:"screen_name"`
 	Pattern    string          `json:"pattern"`
 	Version    int             `json:"version"`
-	Template   json.RawMessage `json:"template"`
-	SlotData   json.RawMessage `json:"slot_data"`
+	Template   json.RawMessage `json:"template" swaggertype:"object"`
+	SlotData   json.RawMessage `json:"slot_data" swaggertype:"object"`
 	HandlerKey *string         `json:"handler_key,omitempty"`
 }
 
@@ -39,6 +39,6 @@ type DeltaSyncResponse struct {
 
 // BucketData represents a single changed bucket with its data and new hash
 type BucketData struct {
-	Data json.RawMessage `json:"data"`
+	Data json.RawMessage `json:"data" swaggertype:"object"`
 	Hash string          `json:"hash"`
 }

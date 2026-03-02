@@ -1,5 +1,49 @@
 basePath: /api/v1
 definitions:
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.AssignPermissionRequest:
+    properties:
+      permission_id:
+        type: string
+    required:
+    - permission_id
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.BucketData:
+    properties:
+      data:
+        type: object
+      hash:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.BulkPermissionsRequest:
+    properties:
+      permission_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - permission_ids
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreatePermissionRequest:
+    properties:
+      action:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      name:
+        type: string
+      resource_id:
+        type: string
+      scope:
+        type: string
+    required:
+    - action
+    - display_name
+    - name
+    - resource_id
+    - scope
+    type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreateResourceRequest:
     properties:
       description:
@@ -22,6 +66,41 @@ definitions:
     - display_name
     - key
     - scope
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreateRoleRequest:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      name:
+        type: string
+      scope:
+        type: string
+    required:
+    - display_name
+    - name
+    - scope
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.DeltaSyncRequest:
+    properties:
+      hashes:
+        additionalProperties:
+          type: string
+        type: object
+    required:
+    - hashes
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.DeltaSyncResponse:
+    properties:
+      changed:
+        additionalProperties:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.BucketData'
+        type: object
+      unchanged:
+        items:
+          type: string
+        type: array
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse:
     properties:
@@ -51,6 +130,31 @@ definitions:
     properties:
       user_role:
         $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UserRoleDTO'
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.MenuItemDTO:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.MenuItemDTO'
+        type: array
+      display_name:
+        type: string
+      icon:
+        type: string
+      key:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+      scope:
+        type: string
+      screens:
+        additionalProperties:
+          type: string
+        type: object
+      sort_order:
+        type: integer
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO:
     properties:
@@ -125,12 +229,68 @@ definitions:
       scope:
         type: string
     type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolePermissionResponse:
+    properties:
+      permission_id:
+        type: string
+      role_id:
+        type: string
+    type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse:
     properties:
       roles:
         items:
           $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
         type: array
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ScreenBundle:
+    properties:
+      handler_key:
+        type: string
+      pattern:
+        type: string
+      screen_key:
+        type: string
+      screen_name:
+        type: string
+      slot_data:
+        type: object
+      template:
+        type: object
+      version:
+        type: integer
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.SyncBundleResponse:
+    properties:
+      available_contexts:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO'
+        type: array
+      hashes:
+        additionalProperties:
+          type: string
+        type: object
+      menu:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.MenuItemDTO'
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+      screens:
+        additionalProperties:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ScreenBundle'
+        type: object
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdatePermissionRequest:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      scope:
+        type: string
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdateResourceRequest:
     properties:
@@ -150,6 +310,17 @@ definitions:
         type: string
       sort_order:
         type: integer
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      name:
+        type: string
+      scope:
+        type: string
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UserRoleDTO:
     properties:
@@ -229,6 +400,13 @@ definitions:
     - resource_key
     - screen_key
     - screen_type
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.ScreenVersionDTO:
+    properties:
+      updated_at:
+        type: string
+      version:
+        type: integer
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.UpdateInstanceRequest:
     properties:
@@ -681,7 +859,66 @@ paths:
       summary: List permissions
       tags:
       - Permissions
+    post:
+      consumes:
+      - application/json
+      description: Create a new permission
+      parameters:
+      - description: Permission data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create permission
+      tags:
+      - Permissions
   /permissions/{id}:
+    delete:
+      description: Soft delete a permission (set is_active=false)
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete permission
+      tags:
+      - Permissions
     get:
       description: Get a single permission by its ID
       parameters:
@@ -708,6 +945,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Get permission by ID
+      tags:
+      - Permissions
+    put:
+      consumes:
+      - application/json
+      description: Update an existing permission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated permission data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update permission
       tags:
       - Permissions
   /resources:
@@ -870,7 +1147,66 @@ paths:
       summary: List roles
       tags:
       - Roles
+    post:
+      consumes:
+      - application/json
+      description: Create a new role
+      parameters:
+      - description: Role data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create role
+      tags:
+      - Roles
   /roles/{id}:
+    delete:
+      description: Soft delete a role (set is_active=false)
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete role
+      tags:
+      - Roles
     get:
       description: Get a single role by its ID
       parameters:
@@ -897,6 +1233,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Get role by ID
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update an existing role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated role data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update role
       tags:
       - Roles
   /roles/{id}/permissions:
@@ -926,6 +1302,117 @@ paths:
       security:
       - BearerAuth: []
       summary: Get role permissions
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Assign a permission to a role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permission assignment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.AssignPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolePermissionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign permission to role
+      tags:
+      - Roles
+  /roles/{id}/permissions/{perm_id}:
+    delete:
+      description: Remove a permission assignment from a role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permission ID
+        in: path
+        name: perm_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke permission from role
+      tags:
+      - Roles
+  /roles/{id}/permissions/bulk:
+    put:
+      consumes:
+      - application/json
+      description: Replace all permissions assigned to a role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permission IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.BulkPermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Bulk replace role permissions
       tags:
       - Roles
   /screen-config/instances:
@@ -1369,6 +1856,111 @@ paths:
       summary: Update screen template
       tags:
       - Screen Config
+  /screen-config/version/{key}:
+    get:
+      description: Returns lightweight version info for a screen configuration by
+        key
+      parameters:
+      - description: Screen key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_service.ScreenVersionDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get screen version
+      tags:
+      - Screen Config
+  /sync/bundle:
+    get:
+      description: Returns the sync bundle. Use ?buckets=menu,permissions,available_contexts,screens
+        to load specific buckets only.
+      parameters:
+      - description: Comma-separated bucket names to load (menu,permissions,available_contexts,screens).
+          Empty = all.
+        in: query
+        name: buckets
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.SyncBundleResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get full sync bundle
+      tags:
+      - Sync
+  /sync/delta:
+    post:
+      consumes:
+      - application/json
+      description: Compares client hashes with server state and returns only changed
+        buckets
+      parameters:
+      - description: Client hashes for comparison
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.DeltaSyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.DeltaSyncResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get delta sync
+      tags:
+      - Sync
   /users/{user_id}/roles:
     get:
       description: Get all roles assigned to a user
