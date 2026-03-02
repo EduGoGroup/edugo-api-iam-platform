@@ -2337,10 +2337,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "hash": {
                     "type": "string"
@@ -2711,16 +2708,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slot_data": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "template": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "version": {
                     "type": "integer"

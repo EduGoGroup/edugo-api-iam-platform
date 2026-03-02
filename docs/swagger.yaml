@@ -10,9 +10,7 @@ definitions:
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.BucketData:
     properties:
       data:
-        items:
-          type: integer
-        type: array
+        type: object
       hash:
         type: string
     type: object
@@ -256,13 +254,9 @@ definitions:
       screen_name:
         type: string
       slot_data:
-        items:
-          type: integer
-        type: array
+        type: object
       template:
-        items:
-          type: integer
-        type: array
+        type: object
       version:
         type: integer
     type: object
