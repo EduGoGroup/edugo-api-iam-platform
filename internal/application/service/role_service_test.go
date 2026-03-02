@@ -14,7 +14,7 @@ import (
 )
 
 func newRoleService(roleRepo *mockRoleRepo, permRepo *mockPermissionRepo, urRepo *mockUserRoleRepo) RoleService {
-	return NewRoleService(roleRepo, permRepo, urRepo, &mockLogger{})
+	return NewRoleService(roleRepo, permRepo, urRepo, &mockRolePermRepo{}, &mockResourceRepo{}, &mockLogger{})
 }
 
 // ─── GetRoles ────────────────────────────────────────────────────────────────

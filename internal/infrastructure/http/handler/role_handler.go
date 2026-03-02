@@ -80,6 +80,81 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 	c.JSON(http.StatusOK, role)
 }
 
+// CreateRole creates a new role
+// @Summary Create role
+// @Description Create a new role
+// @Tags Roles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateRoleRequest true "Role data"
+// @Success 201 {object} dto.RoleDTO
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles [post]
+func (h *RoleHandler) CreateRole(c *gin.Context) {
+	var req dto.CreateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+		return
+	}
+	role, err := h.roleService.CreateRole(c.Request.Context(), &req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusCreated, role)
+}
+
+// UpdateRole updates a role
+// @Summary Update role
+// @Description Update an existing role
+// @Tags Roles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Param request body dto.UpdateRoleRequest true "Updated role data"
+// @Success 200 {object} dto.RoleDTO
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles/{id} [put]
+func (h *RoleHandler) UpdateRole(c *gin.Context) {
+	id := c.Param("id")
+	var req dto.UpdateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+		return
+	}
+	role, err := h.roleService.UpdateRole(c.Request.Context(), id, &req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, role)
+}
+
+// DeleteRole soft-deletes a role
+// @Summary Delete role
+// @Description Soft delete a role (set is_active=false)
+// @Tags Roles
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Success 204
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 422 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles/{id} [delete]
+func (h *RoleHandler) DeleteRole(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.roleService.DeleteRole(c.Request.Context(), id); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // GetRolePermissions gets permissions for a role
 // @Summary Get role permissions
 // @Description Get all permissions assigned to a role
@@ -99,6 +174,85 @@ func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, perms)
+}
+
+// AssignPermission assigns a permission to a role
+// @Summary Assign permission to role
+// @Description Assign a permission to a role
+// @Tags Roles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Param request body dto.AssignPermissionRequest true "Permission assignment"
+// @Success 201 {object} dto.RolePermissionResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles/{id}/permissions [post]
+func (h *RoleHandler) AssignPermission(c *gin.Context) {
+	id := c.Param("id")
+	var req dto.AssignPermissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+		return
+	}
+	result, err := h.roleService.AssignPermission(c.Request.Context(), id, &req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusCreated, result)
+}
+
+// RevokePermission revokes a permission from a role
+// @Summary Revoke permission from role
+// @Description Remove a permission assignment from a role
+// @Tags Roles
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Param perm_id path string true "Permission ID"
+// @Success 204
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles/{id}/permissions/{perm_id} [delete]
+func (h *RoleHandler) RevokePermission(c *gin.Context) {
+	roleID := c.Param("id")
+	permID := c.Param("perm_id")
+	if err := h.roleService.RevokePermission(c.Request.Context(), roleID, permID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// BulkReplacePermissions replaces all permissions for a role
+// @Summary Bulk replace role permissions
+// @Description Replace all permissions assigned to a role
+// @Tags Roles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Role ID"
+// @Param request body dto.BulkPermissionsRequest true "Permission IDs"
+// @Success 200 {object} dto.PermissionsResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /roles/{id}/permissions/bulk [put]
+func (h *RoleHandler) BulkReplacePermissions(c *gin.Context) {
+	id := c.Param("id")
+	var req dto.BulkPermissionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+		return
+	}
+	result, err := h.roleService.BulkReplacePermissions(c.Request.Context(), id, &req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 // GetUserRoles gets roles assigned to a user

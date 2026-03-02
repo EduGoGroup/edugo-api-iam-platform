@@ -24,6 +24,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 		svc := NewPermissionService(
 			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return perms, nil }},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -42,6 +43,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 	t.Run("retorna lista vacía sin error", func(t *testing.T) {
 		svc := NewPermissionService(
 			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -59,6 +61,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
 				return nil, errors.New("db error")
 			}},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -82,6 +85,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 				capturedFilters = filters
 				return []*entities.Permission{}, nil
 			}},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -114,6 +118,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 				}
 				return perm, nil
 			}},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -130,7 +135,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 	})
 
 	t.Run("retorna error de validación con UUID inválido", func(t *testing.T) {
-		svc := NewPermissionService(&mockPermissionRepo{}, &mockLogger{})
+		svc := NewPermissionService(&mockPermissionRepo{}, &mockResourceRepo{}, &mockLogger{})
 
 		_, err := svc.GetPermission(ctx, "not-a-uuid")
 		if err == nil {
@@ -150,6 +155,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 			&mockPermissionRepo{findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) {
 				return nil, nil
 			}},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -171,6 +177,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 			&mockPermissionRepo{findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) {
 				return nil, errors.New("db error")
 			}},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
@@ -195,6 +202,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 
 		svc := NewPermissionService(
 			&mockPermissionRepo{findByIDFn: func(ctx context.Context, _ uuid.UUID) (*entities.Permission, error) { return perm, nil }},
+			&mockResourceRepo{},
 			&mockLogger{},
 		)
 
