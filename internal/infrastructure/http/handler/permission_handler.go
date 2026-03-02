@@ -144,7 +144,7 @@ func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 // @Param id path string true "Permission ID"
 // @Success 204
 // @Failure 404 {object} dto.ErrorResponse
-// @Failure 422 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /permissions/{id} [delete]
 func (h *PermissionHandler) DeletePermission(c *gin.Context) {

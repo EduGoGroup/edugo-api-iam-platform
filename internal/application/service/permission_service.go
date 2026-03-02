@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
@@ -12,6 +14,8 @@ import (
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
+
+var permissionNameRegex = regexp.MustCompile(`^[a-z_.]+:[a-z_]+$`)
 
 // PermissionService defines the permission service interface
 type PermissionService interface {
@@ -72,6 +76,14 @@ func (s *permissionService) CreatePermission(ctx context.Context, req *dto.Creat
 	}
 	if resource == nil {
 		return nil, errors.NewNotFoundError("resource")
+	}
+
+	// Validate consistency: name must equal resource.Key + ":" + action
+	expectedName := resource.Key + ":" + req.Action
+	if req.Name != expectedName {
+		return nil, errors.NewValidationError(
+			fmt.Sprintf("name must be consistent with resource and action: expected %q but got %q", expectedName, req.Name),
+		)
 	}
 
 	now := time.Now()
@@ -149,7 +161,7 @@ func (s *permissionService) DeletePermission(ctx context.Context, id string) err
 		return errors.NewDatabaseError("check active role permissions", err)
 	}
 	if hasActive {
-		return errors.NewBusinessRuleError("cannot delete permission with active role assignments")
+		return errors.NewConflictError("cannot delete permission with active role assignments")
 	}
 
 	if err := s.permissionRepo.SoftDelete(ctx, pid); err != nil {

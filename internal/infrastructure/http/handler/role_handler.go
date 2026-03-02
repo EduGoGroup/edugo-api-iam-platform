@@ -143,7 +143,7 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 // @Param id path string true "Role ID"
 // @Success 204
 // @Failure 404 {object} dto.ErrorResponse
-// @Failure 422 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /roles/{id} [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {

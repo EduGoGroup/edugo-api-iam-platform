@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
@@ -213,5 +214,264 @@ func TestPermissionService_GetPermission(t *testing.T) {
 		if resp.Description != desc {
 			t.Errorf("descripción incorrecta: %s", resp.Description)
 		}
+	})
+}
+
+// ─── CreatePermission ─────────────────────────────────────────────────────────
+
+func TestPermissionService_CreatePermission(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("crea permiso correctamente", func(t *testing.T) {
+		resID := uuid.New()
+		resource := &entities.Resource{ID: resID, Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true}
+
+		var captured *entities.Permission
+		permRepo := &mockPermissionRepo{
+			createFn: func(ctx context.Context, perm *entities.Permission) error {
+				captured = perm
+				return nil
+			},
+		}
+		resRepo := &mockResourceRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Resource, error) { return resource, nil },
+		}
+
+		svc := NewPermissionService(permRepo, resRepo, &mockLogger{})
+		req := &dto.CreatePermissionRequest{
+			Name:        "users:read",
+			DisplayName: "Read Users",
+			Description: "allows reading users",
+			ResourceID:  resID.String(),
+			Action:      "read",
+			Scope:       "school",
+		}
+		resp, err := svc.CreatePermission(ctx, req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Name != "users:read" {
+			t.Errorf("nombre incorrecto: %s", resp.Name)
+		}
+		if resp.Action != "read" {
+			t.Errorf("acción incorrecta: %s", resp.Action)
+		}
+		if resp.ResourceKey != "users" {
+			t.Errorf("resource key incorrecto: %s", resp.ResourceKey)
+		}
+		if captured == nil {
+			t.Fatal("no se llamó al repo")
+		}
+		if captured.Description == nil || *captured.Description != "allows reading users" {
+			t.Errorf("descripción incorrecta")
+		}
+	})
+
+	t.Run("retorna error con nombre inválido (formato incorrecto)", func(t *testing.T) {
+		svc := NewPermissionService(&mockPermissionRepo{}, &mockResourceRepo{}, &mockLogger{})
+		req := &dto.CreatePermissionRequest{Name: "INVALID", DisplayName: "Test", ResourceID: uuid.New().String(), Action: "read", Scope: "school"}
+		_, err := svc.CreatePermission(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("acepta nombre con puntos en resource (admin.users:read)", func(t *testing.T) {
+		resID := uuid.New()
+		resource := &entities.Resource{ID: resID, Key: "admin.users", DisplayName: "Admin Users", Scope: "platform", IsActive: true}
+		permRepo := &mockPermissionRepo{
+			createFn: func(ctx context.Context, perm *entities.Permission) error { return nil },
+		}
+		resRepo := &mockResourceRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Resource, error) { return resource, nil },
+		}
+
+		svc := NewPermissionService(permRepo, resRepo, &mockLogger{})
+		req := &dto.CreatePermissionRequest{Name: "admin.users:read", DisplayName: "Read Admin Users", ResourceID: resID.String(), Action: "read", Scope: "school"}
+		resp, err := svc.CreatePermission(ctx, req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Name != "admin.users:read" {
+			t.Errorf("nombre incorrecto: %s", resp.Name)
+		}
+	})
+
+	t.Run("retorna error con resource_id inválido", func(t *testing.T) {
+		svc := NewPermissionService(&mockPermissionRepo{}, &mockResourceRepo{}, &mockLogger{})
+		req := &dto.CreatePermissionRequest{Name: "users:read", DisplayName: "Read", ResourceID: "bad-uuid", Action: "read", Scope: "school"}
+		_, err := svc.CreatePermission(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando resource no existe", func(t *testing.T) {
+		resRepo := &mockResourceRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Resource, error) { return nil, nil },
+		}
+		svc := NewPermissionService(&mockPermissionRepo{}, resRepo, &mockLogger{})
+		req := &dto.CreatePermissionRequest{Name: "users:read", DisplayName: "Read", ResourceID: uuid.New().String(), Action: "read", Scope: "school"}
+		_, err := svc.CreatePermission(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna error cuando name no es consistente con resource key y action", func(t *testing.T) {
+		resID := uuid.New()
+		resource := &entities.Resource{ID: resID, Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true}
+		resRepo := &mockResourceRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Resource, error) { return resource, nil },
+		}
+		svc := NewPermissionService(&mockPermissionRepo{}, resRepo, &mockLogger{})
+		// name says "roles:read" but resource key is "users"
+		req := &dto.CreatePermissionRequest{Name: "roles:read", DisplayName: "Read", ResourceID: resID.String(), Action: "read", Scope: "school"}
+		_, err := svc.CreatePermission(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("propaga error de base de datos", func(t *testing.T) {
+		resID := uuid.New()
+		resource := &entities.Resource{ID: resID, Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true}
+		permRepo := &mockPermissionRepo{
+			createFn: func(ctx context.Context, perm *entities.Permission) error { return errors.New("db error") },
+		}
+		resRepo := &mockResourceRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Resource, error) { return resource, nil },
+		}
+		svc := NewPermissionService(permRepo, resRepo, &mockLogger{})
+		req := &dto.CreatePermissionRequest{Name: "users:read", DisplayName: "Read", ResourceID: resID.String(), Action: "read", Scope: "school"}
+		_, err := svc.CreatePermission(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── UpdatePermission ─────────────────────────────────────────────────────────
+
+func TestPermissionService_UpdatePermission(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("actualiza permiso correctamente", func(t *testing.T) {
+		id := uuid.New()
+		resID := uuid.New()
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			updateFn:   func(ctx context.Context, p *entities.Permission) error { return nil },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+
+		newDisplay := "Read All Users"
+		newDesc := "updated description"
+		req := &dto.UpdatePermissionRequest{DisplayName: &newDisplay, Description: &newDesc}
+		resp, err := svc.UpdatePermission(ctx, id.String(), req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.DisplayName != "Read All Users" {
+			t.Errorf("display name no actualizado: %s", resp.DisplayName)
+		}
+		if resp.Description != "updated description" {
+			t.Errorf("descripción no actualizada: %s", resp.Description)
+		}
+	})
+
+	t.Run("retorna error con UUID inválido", func(t *testing.T) {
+		svc := NewPermissionService(&mockPermissionRepo{}, &mockResourceRepo{}, &mockLogger{})
+		_, err := svc.UpdatePermission(ctx, "bad-uuid", &dto.UpdatePermissionRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando permiso no existe", func(t *testing.T) {
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return nil, nil },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		_, err := svc.UpdatePermission(ctx, uuid.New().String(), &dto.UpdatePermissionRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("propaga error de base de datos en update", func(t *testing.T) {
+		id := uuid.New()
+		resID := uuid.New()
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			updateFn:   func(ctx context.Context, p *entities.Permission) error { return errors.New("db error") },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		_, err := svc.UpdatePermission(ctx, id.String(), &dto.UpdatePermissionRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── DeletePermission ─────────────────────────────────────────────────────────
+
+func TestPermissionService_DeletePermission(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("elimina permiso correctamente", func(t *testing.T) {
+		id := uuid.New()
+		resID := uuid.New()
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+
+		var deletedID uuid.UUID
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			hasActiveRolePermissionsFn: func(ctx context.Context, pID uuid.UUID) (bool, error) { return false, nil },
+			softDeleteFn: func(ctx context.Context, gotID uuid.UUID) error {
+				deletedID = gotID
+				return nil
+			},
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		err := svc.DeletePermission(ctx, id.String())
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if deletedID != id {
+			t.Errorf("ID de delete incorrecto: %s", deletedID)
+		}
+	})
+
+	t.Run("retorna error con UUID inválido", func(t *testing.T) {
+		svc := NewPermissionService(&mockPermissionRepo{}, &mockResourceRepo{}, &mockLogger{})
+		err := svc.DeletePermission(ctx, "bad-uuid")
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando permiso no existe", func(t *testing.T) {
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return nil, nil },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		err := svc.DeletePermission(ctx, uuid.New().String())
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna conflict cuando tiene role permissions activos", func(t *testing.T) {
+		id := uuid.New()
+		resID := uuid.New()
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+
+		permRepo := &mockPermissionRepo{
+			findByIDFn:                 func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			hasActiveRolePermissionsFn: func(ctx context.Context, pID uuid.UUID) (bool, error) { return true, nil },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		err := svc.DeletePermission(ctx, id.String())
+		assertAppError(t, err, sharedErrors.ErrorCodeConflict)
+	})
+
+	t.Run("propaga error de base de datos en SoftDelete", func(t *testing.T) {
+		id := uuid.New()
+		resID := uuid.New()
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+
+		permRepo := &mockPermissionRepo{
+			findByIDFn:                 func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			hasActiveRolePermissionsFn: func(ctx context.Context, pID uuid.UUID) (bool, error) { return false, nil },
+			softDeleteFn:               func(ctx context.Context, gotID uuid.UUID) error { return errors.New("db error") },
+		}
+		svc := NewPermissionService(permRepo, &mockResourceRepo{}, &mockLogger{})
+		err := svc.DeletePermission(ctx, id.String())
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
 	})
 }

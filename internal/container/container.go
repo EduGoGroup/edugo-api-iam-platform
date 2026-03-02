@@ -65,7 +65,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	c.VerifyHandler = authHandler.NewVerifyHandler(c.TokenService)
 
 	// Services
-	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, rolePermRepo, resourceRepo, log)
+	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, rolePermRepo, log)
 	resourceService := service.NewResourceService(resourceRepo, log)
 	menuService := service.NewMenuService(resourceRepo, resourceScreenRepo, log)
 	permissionService := service.NewPermissionService(permissionRepo, resourceRepo, log)

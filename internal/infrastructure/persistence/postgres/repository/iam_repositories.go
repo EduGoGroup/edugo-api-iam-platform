@@ -149,17 +149,18 @@ func (r *postgresRolePermissionRepository) BulkReplace(ctx context.Context, role
 		if err := tx.Where("role_id = ?", roleID).Delete(&entities.RolePermission{}).Error; err != nil {
 			return err
 		}
-		for _, pid := range permissionIDs {
-			rp := &entities.RolePermission{
+		if len(permissionIDs) == 0 {
+			return nil
+		}
+		rps := make([]entities.RolePermission, len(permissionIDs))
+		for i, pid := range permissionIDs {
+			rps[i] = entities.RolePermission{
 				ID:           uuid.New(),
 				RoleID:       roleID,
 				PermissionID: pid,
 			}
-			if err := tx.Create(rp).Error; err != nil {
-				return err
-			}
 		}
-		return nil
+		return tx.Create(&rps).Error
 	})
 }
 

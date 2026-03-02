@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
@@ -14,8 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var validScopes = map[string]bool{"system": true, "school": true, "unit": true}
-var permissionNameRegex = regexp.MustCompile(`^[a-z_]+:[a-z_]+$`)
+var validScopes = map[string]bool{"system": true, "school": true, "unit": true, "platform": true}
 
 // RoleService defines the role service interface
 type RoleService interface {
@@ -38,13 +36,12 @@ type roleService struct {
 	permissionRepo repository.PermissionRepository
 	userRoleRepo   repository.UserRoleRepository
 	rolePermRepo   repository.RolePermissionRepository
-	resourceRepo   repository.ResourceRepository
 	logger         logger.Logger
 }
 
 // NewRoleService creates a new role service
-func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, rolePermRepo repository.RolePermissionRepository, resourceRepo repository.ResourceRepository, logger logger.Logger) RoleService {
-	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, rolePermRepo: rolePermRepo, resourceRepo: resourceRepo, logger: logger}
+func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, rolePermRepo repository.RolePermissionRepository, logger logger.Logger) RoleService {
+	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, rolePermRepo: rolePermRepo, logger: logger}
 }
 
 func (s *roleService) GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error) {
@@ -159,7 +156,7 @@ func (s *roleService) DeleteRole(ctx context.Context, id string) error {
 		return errors.NewDatabaseError("check active user roles", err)
 	}
 	if hasActive {
-		return errors.NewBusinessRuleError("cannot delete role with active user assignments")
+		return errors.NewConflictError("cannot delete role with active user assignments")
 	}
 
 	if err := s.roleRepo.SoftDelete(ctx, roleID); err != nil {
