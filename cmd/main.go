@@ -129,7 +129,13 @@ func main() {
 		{
 			roles.GET("", c.RoleHandler.ListRoles)
 			roles.GET("/:id", c.RoleHandler.GetRole)
+			roles.POST("", c.RoleHandler.CreateRole)
+			roles.PUT("/:id", c.RoleHandler.UpdateRole)
+			roles.DELETE("/:id", c.RoleHandler.DeleteRole)
 			roles.GET("/:id/permissions", c.RoleHandler.GetRolePermissions)
+			roles.POST("/:id/permissions", c.RoleHandler.AssignPermission)
+			roles.DELETE("/:id/permissions/:perm_id", c.RoleHandler.RevokePermission)
+			roles.PUT("/:id/permissions/bulk", c.RoleHandler.BulkReplacePermissions)
 		}
 
 		// Permissions
@@ -137,6 +143,9 @@ func main() {
 		{
 			permissions.GET("", c.PermissionHandler.ListPermissions)
 			permissions.GET("/:id", c.PermissionHandler.GetPermission)
+			permissions.POST("", c.PermissionHandler.CreatePermission)
+			permissions.PUT("/:id", c.PermissionHandler.UpdatePermission)
+			permissions.DELETE("/:id", c.PermissionHandler.DeletePermission)
 		}
 
 		// Resources

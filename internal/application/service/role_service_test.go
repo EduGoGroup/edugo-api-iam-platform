@@ -14,7 +14,7 @@ import (
 )
 
 func newRoleService(roleRepo *mockRoleRepo, permRepo *mockPermissionRepo, urRepo *mockUserRoleRepo) RoleService {
-	return NewRoleService(roleRepo, permRepo, urRepo, &mockLogger{})
+	return NewRoleService(roleRepo, permRepo, urRepo, &mockRolePermRepo{}, &mockLogger{})
 }
 
 // ─── GetRoles ────────────────────────────────────────────────────────────────
@@ -471,6 +471,460 @@ func TestRoleService_RevokeRoleFromUser(t *testing.T) {
 		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, urRepo)
 		err := svc.RevokeRoleFromUser(ctx, uuid.New().String(), uuid.New().String())
 		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── CreateRole ───────────────────────────────────────────────────────────────
+
+func TestRoleService_CreateRole(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("crea role correctamente", func(t *testing.T) {
+		var captured *entities.Role
+		roleRepo := &mockRoleRepo{
+			createFn: func(ctx context.Context, role *entities.Role) error {
+				captured = role
+				return nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.CreateRoleRequest{Name: "editor", DisplayName: "Editor", Description: "edit stuff", Scope: "school"}
+		resp, err := svc.CreateRole(ctx, req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Name != "editor" {
+			t.Errorf("nombre incorrecto: %s", resp.Name)
+		}
+		if resp.DisplayName != "Editor" {
+			t.Errorf("display name incorrecto: %s", resp.DisplayName)
+		}
+		if !resp.IsActive {
+			t.Error("role debería estar activo")
+		}
+		if captured == nil {
+			t.Fatal("no se llamó al repo")
+		}
+		if captured.Description == nil || *captured.Description != "edit stuff" {
+			t.Errorf("descripción incorrecta")
+		}
+	})
+
+	t.Run("retorna error con scope inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.CreateRoleRequest{Name: "test", DisplayName: "Test", Scope: "invalid"}
+		_, err := svc.CreateRole(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("acepta scope platform", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			createFn: func(ctx context.Context, role *entities.Role) error { return nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.CreateRoleRequest{Name: "admin", DisplayName: "Admin", Scope: "platform"}
+		_, err := svc.CreateRole(ctx, req)
+		if err != nil {
+			t.Fatalf("scope platform debería ser válido: %v", err)
+		}
+	})
+
+	t.Run("propaga error de base de datos", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			createFn: func(ctx context.Context, role *entities.Role) error { return errors.New("db error") },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.CreateRoleRequest{Name: "test", DisplayName: "Test", Scope: "school"}
+		_, err := svc.CreateRole(ctx, req)
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── UpdateRole ───────────────────────────────────────────────────────────────
+
+func TestRoleService_UpdateRole(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("actualiza role correctamente", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+			updateFn:   func(ctx context.Context, r *entities.Role) error { return nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		newName := "super_admin"
+		newDisplay := "Super Admin"
+		req := &dto.UpdateRoleRequest{Name: &newName, DisplayName: &newDisplay}
+		resp, err := svc.UpdateRole(ctx, id.String(), req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Name != "super_admin" {
+			t.Errorf("nombre no actualizado: %s", resp.Name)
+		}
+		if resp.DisplayName != "Super Admin" {
+			t.Errorf("display name no actualizado: %s", resp.DisplayName)
+		}
+	})
+
+	t.Run("retorna error con UUID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		_, err := svc.UpdateRole(ctx, "bad-uuid", &dto.UpdateRoleRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando role no existe", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return nil, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		_, err := svc.UpdateRole(ctx, uuid.New().String(), &dto.UpdateRoleRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna error con scope inválido", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		bad := "invalid"
+		req := &dto.UpdateRoleRequest{Scope: &bad}
+		_, err := svc.UpdateRole(ctx, id.String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("propaga error de base de datos en update", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+			updateFn:   func(ctx context.Context, r *entities.Role) error { return errors.New("db error") },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		_, err := svc.UpdateRole(ctx, id.String(), &dto.UpdateRoleRequest{})
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── DeleteRole ───────────────────────────────────────────────────────────────
+
+func TestRoleService_DeleteRole(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("elimina role correctamente", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		var deletedID uuid.UUID
+		roleRepo := &mockRoleRepo{
+			findByIDFn:           func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+			hasActiveUserRolesFn: func(ctx context.Context, roleID uuid.UUID) (bool, error) { return false, nil },
+			softDeleteFn: func(ctx context.Context, gotID uuid.UUID) error {
+				deletedID = gotID
+				return nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.DeleteRole(ctx, id.String())
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if deletedID != id {
+			t.Errorf("ID de delete incorrecto: %s", deletedID)
+		}
+	})
+
+	t.Run("retorna error con UUID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.DeleteRole(ctx, "bad-uuid")
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando role no existe", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return nil, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.DeleteRole(ctx, uuid.New().String())
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna conflict cuando tiene user roles activos", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn:           func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+			hasActiveUserRolesFn: func(ctx context.Context, roleID uuid.UUID) (bool, error) { return true, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.DeleteRole(ctx, id.String())
+		assertAppError(t, err, sharedErrors.ErrorCodeConflict)
+	})
+
+	t.Run("propaga error de base de datos en SoftDelete", func(t *testing.T) {
+		id := uuid.New()
+		role := &entities.Role{ID: id, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn:           func(ctx context.Context, gotID uuid.UUID) (*entities.Role, error) { return role, nil },
+			hasActiveUserRolesFn: func(ctx context.Context, roleID uuid.UUID) (bool, error) { return false, nil },
+			softDeleteFn:         func(ctx context.Context, gotID uuid.UUID) error { return errors.New("db error") },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.DeleteRole(ctx, id.String())
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── AssignPermission ─────────────────────────────────────────────────────────
+
+func newRoleServiceFull(roleRepo *mockRoleRepo, permRepo *mockPermissionRepo, urRepo *mockUserRoleRepo, rpRepo *mockRolePermRepo) RoleService {
+	return NewRoleService(roleRepo, permRepo, urRepo, rpRepo, &mockLogger{})
+}
+
+func TestRoleService_AssignPermission(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("asigna permiso al role correctamente", func(t *testing.T) {
+		roleID := uuid.New()
+		permID := uuid.New()
+		resID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
+
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return perm, nil },
+		}
+		rpRepo := &mockRolePermRepo{
+			existsFn: func(ctx context.Context, rID, pID uuid.UUID) (bool, error) { return false, nil },
+			assignFn: func(ctx context.Context, rp *entities.RolePermission) error { return nil },
+		}
+
+		svc := newRoleServiceFull(roleRepo, permRepo, &mockUserRoleRepo{}, rpRepo)
+		req := &dto.AssignPermissionRequest{PermissionID: permID.String()}
+		resp, err := svc.AssignPermission(ctx, roleID.String(), req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.RoleID != roleID.String() {
+			t.Errorf("roleID incorrecto: %s", resp.RoleID)
+		}
+		if resp.PermissionID != permID.String() {
+			t.Errorf("permissionID incorrecto: %s", resp.PermissionID)
+		}
+	})
+
+	t.Run("retorna already exists cuando ya está asignado", func(t *testing.T) {
+		roleID := uuid.New()
+		permID := uuid.New()
+		resID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
+
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return perm, nil },
+		}
+		rpRepo := &mockRolePermRepo{
+			existsFn: func(ctx context.Context, rID, pID uuid.UUID) (bool, error) { return true, nil },
+		}
+
+		svc := newRoleServiceFull(roleRepo, permRepo, &mockUserRoleRepo{}, rpRepo)
+		req := &dto.AssignPermissionRequest{PermissionID: permID.String()}
+		_, err := svc.AssignPermission(ctx, roleID.String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeAlreadyExists)
+	})
+
+	t.Run("retorna error con roleID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.AssignPermissionRequest{PermissionID: uuid.New().String()}
+		_, err := svc.AssignPermission(ctx, "bad-uuid", req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna error con permissionID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.AssignPermissionRequest{PermissionID: "bad-uuid"}
+		_, err := svc.AssignPermission(ctx, uuid.New().String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando role no existe", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return nil, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.AssignPermissionRequest{PermissionID: uuid.New().String()}
+		_, err := svc.AssignPermission(ctx, uuid.New().String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna not found cuando permiso no existe", func(t *testing.T) {
+		roleID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return nil, nil },
+		}
+		svc := newRoleServiceFull(roleRepo, permRepo, &mockUserRoleRepo{}, &mockRolePermRepo{})
+		req := &dto.AssignPermissionRequest{PermissionID: uuid.New().String()}
+		_, err := svc.AssignPermission(ctx, roleID.String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+}
+
+// ─── RevokePermission ─────────────────────────────────────────────────────────
+
+func TestRoleService_RevokePermission(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("revoca permiso correctamente", func(t *testing.T) {
+		var capturedRoleID, capturedPermID uuid.UUID
+		rpRepo := &mockRolePermRepo{
+			revokeFn: func(ctx context.Context, rID, pID uuid.UUID) error {
+				capturedRoleID = rID
+				capturedPermID = pID
+				return nil
+			},
+		}
+		svc := newRoleServiceFull(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{}, rpRepo)
+		roleID := uuid.New()
+		permID := uuid.New()
+		err := svc.RevokePermission(ctx, roleID.String(), permID.String())
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if capturedRoleID != roleID {
+			t.Errorf("roleID incorrecto: %s", capturedRoleID)
+		}
+		if capturedPermID != permID {
+			t.Errorf("permID incorrecto: %s", capturedPermID)
+		}
+	})
+
+	t.Run("retorna error con roleID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.RevokePermission(ctx, "bad-uuid", uuid.New().String())
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna error con permissionID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		err := svc.RevokePermission(ctx, uuid.New().String(), "bad-uuid")
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("propaga error de base de datos", func(t *testing.T) {
+		rpRepo := &mockRolePermRepo{
+			revokeFn: func(ctx context.Context, rID, pID uuid.UUID) error { return errors.New("db error") },
+		}
+		svc := newRoleServiceFull(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{}, rpRepo)
+		err := svc.RevokePermission(ctx, uuid.New().String(), uuid.New().String())
+		assertAppError(t, err, sharedErrors.ErrorCodeDatabaseError)
+	})
+}
+
+// ─── BulkReplacePermissions ───────────────────────────────────────────────────
+
+func TestRoleService_BulkReplacePermissions(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("reemplaza permisos correctamente", func(t *testing.T) {
+		roleID := uuid.New()
+		permID1 := uuid.New()
+		permID2 := uuid.New()
+		resID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		perm1 := &entities.Permission{ID: permID1, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
+		perm2 := &entities.Permission{ID: permID2, Name: "users:write", DisplayName: "Write", ResourceID: resID, ResourceKey: "users", Action: "write", Scope: "school"}
+
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) {
+				if id == permID1 {
+					return perm1, nil
+				}
+				return perm2, nil
+			},
+			findByRoleFn: func(ctx context.Context, rID uuid.UUID) ([]*entities.Permission, error) {
+				return []*entities.Permission{perm1, perm2}, nil
+			},
+		}
+		var capturedIDs []uuid.UUID
+		rpRepo := &mockRolePermRepo{
+			bulkReplaceFn: func(ctx context.Context, rID uuid.UUID, pIDs []uuid.UUID) error {
+				capturedIDs = pIDs
+				return nil
+			},
+		}
+
+		svc := newRoleServiceFull(roleRepo, permRepo, &mockUserRoleRepo{}, rpRepo)
+		req := &dto.BulkPermissionsRequest{PermissionIDs: []string{permID1.String(), permID2.String()}}
+		resp, err := svc.BulkReplacePermissions(ctx, roleID.String(), req)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if len(capturedIDs) != 2 {
+			t.Errorf("esperaba 2 IDs, obtuvo %d", len(capturedIDs))
+		}
+		if len(resp.Permissions) != 2 {
+			t.Errorf("esperaba 2 permisos, obtuvo %d", len(resp.Permissions))
+		}
+	})
+
+	t.Run("retorna error con roleID inválido", func(t *testing.T) {
+		svc := newRoleService(&mockRoleRepo{}, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.BulkPermissionsRequest{PermissionIDs: []string{uuid.New().String()}}
+		_, err := svc.BulkReplacePermissions(ctx, "bad-uuid", req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando role no existe", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return nil, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.BulkPermissionsRequest{PermissionIDs: []string{uuid.New().String()}}
+		_, err := svc.BulkReplacePermissions(ctx, uuid.New().String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
+	})
+
+	t.Run("retorna error con permissionID inválido en lista", func(t *testing.T) {
+		roleID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+		req := &dto.BulkPermissionsRequest{PermissionIDs: []string{"bad-uuid"}}
+		_, err := svc.BulkReplacePermissions(ctx, roleID.String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeValidation)
+	})
+
+	t.Run("retorna not found cuando un permiso no existe", func(t *testing.T) {
+		roleID := uuid.New()
+		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
+		roleRepo := &mockRoleRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
+		}
+		permRepo := &mockPermissionRepo{
+			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Permission, error) { return nil, nil },
+		}
+		svc := newRoleServiceFull(roleRepo, permRepo, &mockUserRoleRepo{}, &mockRolePermRepo{})
+		req := &dto.BulkPermissionsRequest{PermissionIDs: []string{uuid.New().String()}}
+		_, err := svc.BulkReplacePermissions(ctx, roleID.String(), req)
+		assertAppError(t, err, sharedErrors.ErrorCodeNotFound)
 	})
 }
 

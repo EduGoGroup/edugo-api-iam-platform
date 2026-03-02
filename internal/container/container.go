@@ -53,6 +53,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	permissionRepo := pgRepo.NewPostgresPermissionRepository(db)
 	userRoleRepo := pgRepo.NewPostgresUserRoleRepository(db)
 	resourceRepo := pgRepo.NewPostgresResourceRepository(db)
+	rolePermRepo := pgRepo.NewPostgresRolePermissionRepository(db)
 	screenTemplateRepo := pgRepo.NewPostgresScreenTemplateRepository(db)
 	screenInstanceRepo := pgRepo.NewPostgresScreenInstanceRepository(db)
 	resourceScreenRepo := pgRepo.NewPostgresResourceScreenRepository(db)
@@ -64,10 +65,10 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	c.VerifyHandler = authHandler.NewVerifyHandler(c.TokenService)
 
 	// Services
-	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, log)
+	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, rolePermRepo, log)
 	resourceService := service.NewResourceService(resourceRepo, log)
 	menuService := service.NewMenuService(resourceRepo, resourceScreenRepo, log)
-	permissionService := service.NewPermissionService(permissionRepo, log)
+	permissionService := service.NewPermissionService(permissionRepo, resourceRepo, log)
 	screenConfigService := service.NewScreenConfigService(screenTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
 
 	// Sync

@@ -47,6 +47,27 @@ func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string, 
 	return roles, err
 }
 
+func (r *postgresRoleRepository) Create(ctx context.Context, role *entities.Role) error {
+	return r.db.WithContext(ctx).Create(role).Error
+}
+
+func (r *postgresRoleRepository) Update(ctx context.Context, role *entities.Role) error {
+	return r.db.WithContext(ctx).Save(role).Error
+}
+
+func (r *postgresRoleRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&entities.Role{}).Where("id = ?", id).
+		Updates(map[string]interface{}{"is_active": false, "updated_at": time.Now()}).Error
+}
+
+func (r *postgresRoleRepository) HasActiveUserRoles(ctx context.Context, roleID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&entities.UserRole{}).
+		Where("role_id = ? AND is_active = true", roleID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 // ==================== Permission ====================
 
 type postgresPermissionRepository struct{ db *gorm.DB }
@@ -82,6 +103,79 @@ func (r *postgresPermissionRepository) FindByRole(ctx context.Context, roleID uu
 		Order("iam.permissions.name").
 		Find(&perms).Error
 	return perms, err
+}
+
+func (r *postgresPermissionRepository) Create(ctx context.Context, perm *entities.Permission) error {
+	return r.db.WithContext(ctx).Create(perm).Error
+}
+
+func (r *postgresPermissionRepository) Update(ctx context.Context, perm *entities.Permission) error {
+	return r.db.WithContext(ctx).Save(perm).Error
+}
+
+func (r *postgresPermissionRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&entities.Permission{}).Where("id = ?", id).
+		Updates(map[string]interface{}{"is_active": false, "updated_at": time.Now()}).Error
+}
+
+func (r *postgresPermissionRepository) HasActiveRolePermissions(ctx context.Context, permissionID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&entities.RolePermission{}).
+		Where("permission_id = ?", permissionID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// ==================== RolePermission ====================
+
+type postgresRolePermissionRepository struct{ db *gorm.DB }
+
+func NewPostgresRolePermissionRepository(db *gorm.DB) repository.RolePermissionRepository {
+	return &postgresRolePermissionRepository{db: db}
+}
+
+func (r *postgresRolePermissionRepository) Assign(ctx context.Context, rp *entities.RolePermission) error {
+	return r.db.WithContext(ctx).Create(rp).Error
+}
+
+func (r *postgresRolePermissionRepository) Revoke(ctx context.Context, roleID, permissionID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Where("role_id = ? AND permission_id = ?", roleID, permissionID).
+		Delete(&entities.RolePermission{}).Error
+}
+
+func (r *postgresRolePermissionRepository) BulkReplace(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("role_id = ?", roleID).Delete(&entities.RolePermission{}).Error; err != nil {
+			return err
+		}
+		if len(permissionIDs) == 0 {
+			return nil
+		}
+		rps := make([]entities.RolePermission, len(permissionIDs))
+		for i, pid := range permissionIDs {
+			rps[i] = entities.RolePermission{
+				ID:           uuid.New(),
+				RoleID:       roleID,
+				PermissionID: pid,
+			}
+		}
+		return tx.Create(&rps).Error
+	})
+}
+
+func (r *postgresRolePermissionRepository) FindByRole(ctx context.Context, roleID uuid.UUID) ([]*entities.RolePermission, error) {
+	var rps []*entities.RolePermission
+	err := r.db.WithContext(ctx).Where("role_id = ?", roleID).Find(&rps).Error
+	return rps, err
+}
+
+func (r *postgresRolePermissionRepository) Exists(ctx context.Context, roleID, permissionID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&entities.RolePermission{}).
+		Where("role_id = ? AND permission_id = ?", roleID, permissionID).
+		Count(&count).Error
+	return count > 0, err
 }
 
 // ==================== UserRole ====================

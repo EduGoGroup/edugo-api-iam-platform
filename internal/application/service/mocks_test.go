@@ -25,9 +25,13 @@ func (m *mockLogger) With(fields ...interface{}) logger.Logger { return m }
 // ─── RoleRepository mock ─────────────────────────────────────────────────────
 
 type mockRoleRepo struct {
-	findByIDFn    func(ctx context.Context, id uuid.UUID) (*entities.Role, error)
-	findAllFn     func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error)
-	findByScopeFn func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error)
+	findByIDFn          func(ctx context.Context, id uuid.UUID) (*entities.Role, error)
+	findAllFn           func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error)
+	findByScopeFn       func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error)
+	createFn            func(ctx context.Context, role *entities.Role) error
+	updateFn            func(ctx context.Context, role *entities.Role) error
+	softDeleteFn        func(ctx context.Context, id uuid.UUID) error
+	hasActiveUserRolesFn func(ctx context.Context, roleID uuid.UUID) (bool, error)
 }
 
 func (m *mockRoleRepo) FindByID(ctx context.Context, id uuid.UUID) (*entities.Role, error) {
@@ -48,13 +52,41 @@ func (m *mockRoleRepo) FindByScope(ctx context.Context, scope string, filters sh
 	}
 	return nil, nil
 }
+func (m *mockRoleRepo) Create(ctx context.Context, role *entities.Role) error {
+	if m.createFn != nil {
+		return m.createFn(ctx, role)
+	}
+	return nil
+}
+func (m *mockRoleRepo) Update(ctx context.Context, role *entities.Role) error {
+	if m.updateFn != nil {
+		return m.updateFn(ctx, role)
+	}
+	return nil
+}
+func (m *mockRoleRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	if m.softDeleteFn != nil {
+		return m.softDeleteFn(ctx, id)
+	}
+	return nil
+}
+func (m *mockRoleRepo) HasActiveUserRoles(ctx context.Context, roleID uuid.UUID) (bool, error) {
+	if m.hasActiveUserRolesFn != nil {
+		return m.hasActiveUserRolesFn(ctx, roleID)
+	}
+	return false, nil
+}
 
 // ─── PermissionRepository mock ───────────────────────────────────────────────
 
 type mockPermissionRepo struct {
-	findByIDFn   func(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
-	findAllFn    func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error)
-	findByRoleFn func(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
+	findByIDFn                func(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
+	findAllFn                 func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error)
+	findByRoleFn              func(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
+	createFn                  func(ctx context.Context, perm *entities.Permission) error
+	updateFn                  func(ctx context.Context, perm *entities.Permission) error
+	softDeleteFn              func(ctx context.Context, id uuid.UUID) error
+	hasActiveRolePermissionsFn func(ctx context.Context, permissionID uuid.UUID) (bool, error)
 }
 
 func (m *mockPermissionRepo) FindByID(ctx context.Context, id uuid.UUID) (*entities.Permission, error) {
@@ -74,6 +106,30 @@ func (m *mockPermissionRepo) FindByRole(ctx context.Context, roleID uuid.UUID) (
 		return m.findByRoleFn(ctx, roleID)
 	}
 	return nil, nil
+}
+func (m *mockPermissionRepo) Create(ctx context.Context, perm *entities.Permission) error {
+	if m.createFn != nil {
+		return m.createFn(ctx, perm)
+	}
+	return nil
+}
+func (m *mockPermissionRepo) Update(ctx context.Context, perm *entities.Permission) error {
+	if m.updateFn != nil {
+		return m.updateFn(ctx, perm)
+	}
+	return nil
+}
+func (m *mockPermissionRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	if m.softDeleteFn != nil {
+		return m.softDeleteFn(ctx, id)
+	}
+	return nil
+}
+func (m *mockPermissionRepo) HasActiveRolePermissions(ctx context.Context, permissionID uuid.UUID) (bool, error) {
+	if m.hasActiveRolePermissionsFn != nil {
+		return m.hasActiveRolePermissionsFn(ctx, permissionID)
+	}
+	return false, nil
 }
 
 // ─── UserRoleRepository mock ─────────────────────────────────────────────────
@@ -293,4 +349,45 @@ func (m *mockResourceScreenRepo) Delete(ctx context.Context, id uuid.UUID) error
 		return m.deleteFn(ctx, id)
 	}
 	return nil
+}
+
+// ─── RolePermissionRepository mock ──────────────────────────────────────────
+
+type mockRolePermRepo struct {
+	assignFn      func(ctx context.Context, rp *entities.RolePermission) error
+	revokeFn      func(ctx context.Context, roleID, permissionID uuid.UUID) error
+	bulkReplaceFn func(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error
+	findByRoleFn  func(ctx context.Context, roleID uuid.UUID) ([]*entities.RolePermission, error)
+	existsFn      func(ctx context.Context, roleID, permissionID uuid.UUID) (bool, error)
+}
+
+func (m *mockRolePermRepo) Assign(ctx context.Context, rp *entities.RolePermission) error {
+	if m.assignFn != nil {
+		return m.assignFn(ctx, rp)
+	}
+	return nil
+}
+func (m *mockRolePermRepo) Revoke(ctx context.Context, roleID, permissionID uuid.UUID) error {
+	if m.revokeFn != nil {
+		return m.revokeFn(ctx, roleID, permissionID)
+	}
+	return nil
+}
+func (m *mockRolePermRepo) BulkReplace(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	if m.bulkReplaceFn != nil {
+		return m.bulkReplaceFn(ctx, roleID, permissionIDs)
+	}
+	return nil
+}
+func (m *mockRolePermRepo) FindByRole(ctx context.Context, roleID uuid.UUID) ([]*entities.RolePermission, error) {
+	if m.findByRoleFn != nil {
+		return m.findByRoleFn(ctx, roleID)
+	}
+	return nil, nil
+}
+func (m *mockRolePermRepo) Exists(ctx context.Context, roleID, permissionID uuid.UUID) (bool, error) {
+	if m.existsFn != nil {
+		return m.existsFn(ctx, roleID, permissionID)
+	}
+	return false, nil
 }

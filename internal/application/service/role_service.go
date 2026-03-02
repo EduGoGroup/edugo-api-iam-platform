@@ -13,11 +13,19 @@ import (
 	"github.com/google/uuid"
 )
 
+var validScopes = map[string]bool{"system": true, "school": true, "unit": true, "platform": true}
+
 // RoleService defines the role service interface
 type RoleService interface {
 	GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error)
 	GetRole(ctx context.Context, id string) (*dto.RoleDTO, error)
+	CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (*dto.RoleDTO, error)
+	UpdateRole(ctx context.Context, id string, req *dto.UpdateRoleRequest) (*dto.RoleDTO, error)
+	DeleteRole(ctx context.Context, id string) error
 	GetRolePermissions(ctx context.Context, roleID string) (*dto.PermissionsResponse, error)
+	AssignPermission(ctx context.Context, roleID string, req *dto.AssignPermissionRequest) (*dto.RolePermissionResponse, error)
+	RevokePermission(ctx context.Context, roleID, permissionID string) error
+	BulkReplacePermissions(ctx context.Context, roleID string, req *dto.BulkPermissionsRequest) (*dto.PermissionsResponse, error)
 	GetUserRoles(ctx context.Context, userID string) (*dto.UserRolesResponse, error)
 	GrantRoleToUser(ctx context.Context, userID string, req *dto.GrantRoleRequest, grantedBy string) (*dto.GrantRoleResponse, error)
 	RevokeRoleFromUser(ctx context.Context, userID, roleID string) error
@@ -27,12 +35,13 @@ type roleService struct {
 	roleRepo       repository.RoleRepository
 	permissionRepo repository.PermissionRepository
 	userRoleRepo   repository.UserRoleRepository
+	rolePermRepo   repository.RolePermissionRepository
 	logger         logger.Logger
 }
 
 // NewRoleService creates a new role service
-func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, logger logger.Logger) RoleService {
-	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, logger: logger}
+func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, rolePermRepo repository.RolePermissionRepository, logger logger.Logger) RoleService {
+	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, rolePermRepo: rolePermRepo, logger: logger}
 }
 
 func (s *roleService) GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error) {
@@ -64,12 +73,214 @@ func (s *roleService) GetRole(ctx context.Context, id string) (*dto.RoleDTO, err
 	return dto.ToRoleDTO(role), nil
 }
 
+func (s *roleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (*dto.RoleDTO, error) {
+	if !validScopes[req.Scope] {
+		return nil, errors.NewValidationError("scope must be system, school, or unit")
+	}
+
+	now := time.Now()
+	role := &entities.Role{
+		ID:          uuid.New(),
+		Name:        req.Name,
+		DisplayName: req.DisplayName,
+		Scope:       req.Scope,
+		IsActive:    true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if req.Description != "" {
+		role.Description = &req.Description
+	}
+
+	if err := s.roleRepo.Create(ctx, role); err != nil {
+		return nil, errors.NewDatabaseError("create role", err)
+	}
+
+	s.logger.Info("entity created", "entity_type", "role", "entity_id", role.ID.String(), "name", role.Name)
+	return dto.ToRoleDTO(role), nil
+}
+
+func (s *roleService) UpdateRole(ctx context.Context, id string, req *dto.UpdateRoleRequest) (*dto.RoleDTO, error) {
+	roleID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, errors.NewValidationError("invalid role ID")
+	}
+	role, err := s.roleRepo.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, errors.NewDatabaseError("find role", err)
+	}
+	if role == nil {
+		return nil, errors.NewNotFoundError("role")
+	}
+
+	if req.Name != nil {
+		role.Name = *req.Name
+	}
+	if req.DisplayName != nil {
+		role.DisplayName = *req.DisplayName
+	}
+	if req.Description != nil {
+		role.Description = req.Description
+	}
+	if req.Scope != nil {
+		if !validScopes[*req.Scope] {
+			return nil, errors.NewValidationError("scope must be system, school, or unit")
+		}
+		role.Scope = *req.Scope
+	}
+
+	role.UpdatedAt = time.Now()
+	if err := s.roleRepo.Update(ctx, role); err != nil {
+		return nil, errors.NewDatabaseError("update role", err)
+	}
+
+	s.logger.Info("entity updated", "entity_type", "role", "entity_id", id)
+	return dto.ToRoleDTO(role), nil
+}
+
+func (s *roleService) DeleteRole(ctx context.Context, id string) error {
+	roleID, err := uuid.Parse(id)
+	if err != nil {
+		return errors.NewValidationError("invalid role ID")
+	}
+	role, err := s.roleRepo.FindByID(ctx, roleID)
+	if err != nil {
+		return errors.NewDatabaseError("find role", err)
+	}
+	if role == nil {
+		return errors.NewNotFoundError("role")
+	}
+
+	hasActive, err := s.roleRepo.HasActiveUserRoles(ctx, roleID)
+	if err != nil {
+		return errors.NewDatabaseError("check active user roles", err)
+	}
+	if hasActive {
+		return errors.NewConflictError("cannot delete role with active user assignments")
+	}
+
+	if err := s.roleRepo.SoftDelete(ctx, roleID); err != nil {
+		return errors.NewDatabaseError("delete role", err)
+	}
+
+	s.logger.Info("entity deleted", "entity_type", "role", "entity_id", id)
+	return nil
+}
+
 func (s *roleService) GetRolePermissions(ctx context.Context, roleID string) (*dto.PermissionsResponse, error) {
 	id, err := uuid.Parse(roleID)
 	if err != nil {
 		return nil, errors.NewValidationError("invalid role ID")
 	}
 	perms, err := s.permissionRepo.FindByRole(ctx, id)
+	if err != nil {
+		return nil, errors.NewDatabaseError("find role permissions", err)
+	}
+	return &dto.PermissionsResponse{Permissions: dto.ToPermissionDTOList(perms)}, nil
+}
+
+func (s *roleService) AssignPermission(ctx context.Context, roleID string, req *dto.AssignPermissionRequest) (*dto.RolePermissionResponse, error) {
+	rid, err := uuid.Parse(roleID)
+	if err != nil {
+		return nil, errors.NewValidationError("invalid role ID")
+	}
+	pid, err := uuid.Parse(req.PermissionID)
+	if err != nil {
+		return nil, errors.NewValidationError("invalid permission ID")
+	}
+
+	role, err := s.roleRepo.FindByID(ctx, rid)
+	if err != nil {
+		return nil, errors.NewDatabaseError("find role", err)
+	}
+	if role == nil {
+		return nil, errors.NewNotFoundError("role")
+	}
+
+	perm, err := s.permissionRepo.FindByID(ctx, pid)
+	if err != nil {
+		return nil, errors.NewDatabaseError("find permission", err)
+	}
+	if perm == nil {
+		return nil, errors.NewNotFoundError("permission")
+	}
+
+	exists, err := s.rolePermRepo.Exists(ctx, rid, pid)
+	if err != nil {
+		return nil, errors.NewDatabaseError("check role permission", err)
+	}
+	if exists {
+		return nil, errors.NewAlreadyExistsError("role_permission")
+	}
+
+	rp := &entities.RolePermission{
+		ID:           uuid.New(),
+		RoleID:       rid,
+		PermissionID: pid,
+	}
+	if err := s.rolePermRepo.Assign(ctx, rp); err != nil {
+		return nil, errors.NewDatabaseError("assign permission", err)
+	}
+
+	s.logger.Info("permission assigned to role", "role_id", roleID, "permission_id", req.PermissionID)
+	return &dto.RolePermissionResponse{RoleID: roleID, PermissionID: req.PermissionID}, nil
+}
+
+func (s *roleService) RevokePermission(ctx context.Context, roleID, permissionID string) error {
+	rid, err := uuid.Parse(roleID)
+	if err != nil {
+		return errors.NewValidationError("invalid role ID")
+	}
+	pid, err := uuid.Parse(permissionID)
+	if err != nil {
+		return errors.NewValidationError("invalid permission ID")
+	}
+
+	if err := s.rolePermRepo.Revoke(ctx, rid, pid); err != nil {
+		return errors.NewDatabaseError("revoke permission", err)
+	}
+
+	s.logger.Info("permission revoked from role", "role_id", roleID, "permission_id", permissionID)
+	return nil
+}
+
+func (s *roleService) BulkReplacePermissions(ctx context.Context, roleID string, req *dto.BulkPermissionsRequest) (*dto.PermissionsResponse, error) {
+	rid, err := uuid.Parse(roleID)
+	if err != nil {
+		return nil, errors.NewValidationError("invalid role ID")
+	}
+
+	role, err := s.roleRepo.FindByID(ctx, rid)
+	if err != nil {
+		return nil, errors.NewDatabaseError("find role", err)
+	}
+	if role == nil {
+		return nil, errors.NewNotFoundError("role")
+	}
+
+	permIDs := make([]uuid.UUID, len(req.PermissionIDs))
+	for i, pidStr := range req.PermissionIDs {
+		pid, err := uuid.Parse(pidStr)
+		if err != nil {
+			return nil, errors.NewValidationError("invalid permission ID: " + pidStr)
+		}
+		perm, err := s.permissionRepo.FindByID(ctx, pid)
+		if err != nil {
+			return nil, errors.NewDatabaseError("find permission", err)
+		}
+		if perm == nil {
+			return nil, errors.NewNotFoundError("permission " + pidStr)
+		}
+		permIDs[i] = pid
+	}
+
+	if err := s.rolePermRepo.BulkReplace(ctx, rid, permIDs); err != nil {
+		return nil, errors.NewDatabaseError("bulk replace permissions", err)
+	}
+
+	s.logger.Info("permissions bulk replaced", "role_id", roleID, "count", len(permIDs))
+
+	perms, err := s.permissionRepo.FindByRole(ctx, rid)
 	if err != nil {
 		return nil, errors.NewDatabaseError("find role permissions", err)
 	}
