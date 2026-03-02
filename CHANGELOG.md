@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-02
+
+### Tipo de Release: patch
+
+- chore: upgrade edugo-infrastructure/postgres to v0.54.0
+- fix: address PR review comments - validation, tests, bulk insert
+- feat: CRUD roles, permissions and role_permissions management (Fase 1.1-1.3)
+
+---
+
 ## [0.6.0] - 2026-02-27
 
 ### Tipo de Release: patch
