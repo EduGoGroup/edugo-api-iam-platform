@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-03-02
+
+### Tipo de Release: patch
+
+- fix: correct json.RawMessage fields typed as object in Swagger docs
+- Add CRUD endpoints for permissions to API docs and update deps
+
+---
+
 ## [0.7.0] - 2026-03-02
 
 ### Tipo de Release: patch
