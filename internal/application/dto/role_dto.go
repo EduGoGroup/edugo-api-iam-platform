@@ -53,6 +53,55 @@ type UserRolesResponse struct {
 	UserRoles []*UserRoleDTO `json:"user_roles"`
 }
 
+// CreateRoleRequest represents the request to create a role
+type CreateRoleRequest struct {
+	Name        string `json:"name" binding:"required"`
+	DisplayName string `json:"display_name" binding:"required"`
+	Description string `json:"description"`
+	Scope       string `json:"scope" binding:"required"`
+}
+
+// UpdateRoleRequest represents the request to update a role
+type UpdateRoleRequest struct {
+	Name        *string `json:"name"`
+	DisplayName *string `json:"display_name"`
+	Description *string `json:"description"`
+	Scope       *string `json:"scope"`
+}
+
+// CreatePermissionRequest represents the request to create a permission
+type CreatePermissionRequest struct {
+	Name        string `json:"name" binding:"required"`
+	DisplayName string `json:"display_name" binding:"required"`
+	Description string `json:"description"`
+	ResourceID  string `json:"resource_id" binding:"required"`
+	Action      string `json:"action" binding:"required"`
+	Scope       string `json:"scope" binding:"required"`
+}
+
+// UpdatePermissionRequest represents the request to update a permission
+type UpdatePermissionRequest struct {
+	DisplayName *string `json:"display_name"`
+	Description *string `json:"description"`
+	Scope       *string `json:"scope"`
+}
+
+// AssignPermissionRequest represents the request to assign a permission to a role
+type AssignPermissionRequest struct {
+	PermissionID string `json:"permission_id" binding:"required"`
+}
+
+// BulkPermissionsRequest represents the request to bulk replace role permissions
+type BulkPermissionsRequest struct {
+	PermissionIDs []string `json:"permission_ids" binding:"required"`
+}
+
+// RolePermissionResponse wraps a role permission assignment result
+type RolePermissionResponse struct {
+	RoleID       string `json:"role_id"`
+	PermissionID string `json:"permission_id"`
+}
+
 // GrantRoleRequest represents the request to grant a role
 type GrantRoleRequest struct {
 	RoleID         string  `json:"role_id" binding:"required"`
