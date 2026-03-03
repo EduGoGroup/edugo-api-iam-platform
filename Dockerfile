@@ -1,36 +1,15 @@
-# Multi-stage Dockerfile para API IAM Platform (EduGo)
+# Imagen mínima de runtime — la compilación ocurre en el CI (manual-release.yml
+# Job 2) y el binario se pasa como contexto de build, eliminando toda compilación
+# Go dentro del contenedor (reduce tiempo de imagen de ~12-18 min a ~1 min).
+FROM alpine:latest
 
-FROM golang:1.25-alpine AS builder
-
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY main .
 
-ENV GONOSUMDB=github.com/EduGoGroup/*
-
-ARG GITHUB_TOKEN
-RUN if [ -n "$GITHUB_TOKEN" ]; then \
-      git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; \
-    fi
-
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/main ./cmd/main.go
-
-# Runtime
-FROM alpine:latest
-
-RUN apk add --no-cache ca-certificates
-
-WORKDIR /root/
-
-COPY --from=builder /app/main /root/main
-
-RUN chmod +x /root/main
+RUN chmod +x ./main
 
 EXPOSE 8080
 
