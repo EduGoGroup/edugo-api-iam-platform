@@ -19,8 +19,8 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		id1, id2 := uuid.New(), uuid.New()
 		resID := uuid.New()
 		perms := []*entities.Permission{
-			{ID: id1, Name: "resource:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "resource", Action: "read", Scope: "school"},
-			{ID: id2, Name: "resource:write", DisplayName: "Write", ResourceID: resID, ResourceKey: "resource", Action: "write", Scope: "school"},
+			{ID: id1, Name: "resource:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school"},
+			{ID: id2, Name: "resource:write", DisplayName: "Write", ResourceID: resID, Action: "write", Scope: "school"},
 		}
 
 		svc := NewPermissionService(
@@ -110,7 +110,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 	t.Run("retorna permiso existente correctamente", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "res:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "res", Action: "read", Scope: "school"}
+		perm := &entities.Permission{ID: id, Name: "res:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school"}
 
 		svc := NewPermissionService(
 			&mockPermissionRepo{findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) {
@@ -199,7 +199,7 @@ func TestPermissionService_GetPermission(t *testing.T) {
 		id := uuid.New()
 		desc := "permiso de lectura"
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "res:read", DisplayName: "Read", Description: &desc, ResourceID: resID, ResourceKey: "res", Action: "read", Scope: "school"}
+		perm := &entities.Permission{ID: id, Name: "res:read", DisplayName: "Read", Description: &desc, ResourceID: resID, Action: "read", Scope: "school"}
 
 		svc := NewPermissionService(
 			&mockPermissionRepo{findByIDFn: func(ctx context.Context, _ uuid.UUID) (*entities.Permission, error) { return perm, nil }},
@@ -349,7 +349,7 @@ func TestPermissionService_UpdatePermission(t *testing.T) {
 	t.Run("actualiza permiso correctamente", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school", IsActive: true}
 
 		permRepo := &mockPermissionRepo{
 			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
@@ -390,7 +390,7 @@ func TestPermissionService_UpdatePermission(t *testing.T) {
 	t.Run("propaga error de base de datos en update", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school", IsActive: true}
 
 		permRepo := &mockPermissionRepo{
 			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
@@ -410,7 +410,7 @@ func TestPermissionService_DeletePermission(t *testing.T) {
 	t.Run("elimina permiso correctamente", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school", IsActive: true}
 
 		var deletedID uuid.UUID
 		permRepo := &mockPermissionRepo{
@@ -449,7 +449,7 @@ func TestPermissionService_DeletePermission(t *testing.T) {
 	t.Run("retorna conflict cuando tiene role permissions activos", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school", IsActive: true}
 
 		permRepo := &mockPermissionRepo{
 			findByIDFn:                 func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
@@ -463,7 +463,7 @@ func TestPermissionService_DeletePermission(t *testing.T) {
 	t.Run("propaga error de base de datos en SoftDelete", func(t *testing.T) {
 		id := uuid.New()
 		resID := uuid.New()
-		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school", IsActive: true}
+		perm := &entities.Permission{ID: id, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school", IsActive: true}
 
 		permRepo := &mockPermissionRepo{
 			findByIDFn:                 func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },

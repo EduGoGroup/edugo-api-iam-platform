@@ -193,7 +193,7 @@ func TestRoleService_GetRolePermissions(t *testing.T) {
 		roleID := uuid.New()
 		resID := uuid.New()
 		perms := []*entities.Permission{
-			{ID: uuid.New(), Name: "res:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "res", Action: "read", Scope: "school"},
+			{ID: uuid.New(), Name: "res:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school"},
 		}
 		permRepo := &mockPermissionRepo{
 			findByRoleFn: func(ctx context.Context, gotRoleID uuid.UUID) ([]*entities.Permission, error) {
@@ -692,7 +692,7 @@ func TestRoleService_AssignPermission(t *testing.T) {
 		permID := uuid.New()
 		resID := uuid.New()
 		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
-		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
+		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, Action: "read", Scope: "school"}
 
 		roleRepo := &mockRoleRepo{
 			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
@@ -724,7 +724,7 @@ func TestRoleService_AssignPermission(t *testing.T) {
 		permID := uuid.New()
 		resID := uuid.New()
 		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
-		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
+		perm := &entities.Permission{ID: permID, Name: "users:read", DisplayName: "Read Users", ResourceID: resID, Action: "read", Scope: "school"}
 
 		roleRepo := &mockRoleRepo{
 			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
@@ -844,8 +844,8 @@ func TestRoleService_BulkReplacePermissions(t *testing.T) {
 		permID2 := uuid.New()
 		resID := uuid.New()
 		role := &entities.Role{ID: roleID, Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true}
-		perm1 := &entities.Permission{ID: permID1, Name: "users:read", DisplayName: "Read", ResourceID: resID, ResourceKey: "users", Action: "read", Scope: "school"}
-		perm2 := &entities.Permission{ID: permID2, Name: "users:write", DisplayName: "Write", ResourceID: resID, ResourceKey: "users", Action: "write", Scope: "school"}
+		perm1 := &entities.Permission{ID: permID1, Name: "users:read", DisplayName: "Read", ResourceID: resID, Action: "read", Scope: "school"}
+		perm2 := &entities.Permission{ID: permID2, Name: "users:write", DisplayName: "Write", ResourceID: resID, Action: "write", Scope: "school"}
 
 		roleRepo := &mockRoleRepo{
 			findByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.Role, error) { return role, nil },
