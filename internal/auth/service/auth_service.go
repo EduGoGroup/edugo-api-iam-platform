@@ -184,16 +184,30 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	// Fall back to firstSchoolID from memberships only for legacy tokens without schoolID.
 	var targetSchoolID *uuid.UUID
 	if schoolIDFromToken != "" {
-		if sid, parseErr := uuid.Parse(schoolIDFromToken); parseErr == nil {
-			targetSchoolID = &sid
+		sid, parseErr := uuid.Parse(schoolIDFromToken)
+		if parseErr != nil {
+			// Signed JWT contains a non-parseable schoolID — reject to avoid silent context switch.
+			s.logger.Warn("invalid schoolID in refresh token", "user_id", userID, "school_id", schoolIDFromToken)
+			return nil, ErrInvalidRefreshToken
 		}
+		targetSchoolID = &sid
 	}
 	if targetSchoolID == nil {
 		_, targetSchoolID = s.getUserSchools(ctx, userUUID)
 	}
 
-	// 4. Rebuild RBAC context
+	// 4. Rebuild RBAC context.
+	// For global roles (e.g. super_admin) that have school_id = NULL in user_roles,
+	// buildUserContext with a school-scoped targetSchoolID returns nil.
+	// Mirror SwitchContext: fall back to a global context and pin the schoolID manually.
 	activeContext := s.buildUserContext(ctx, userUUID, targetSchoolID)
+	if activeContext == nil && targetSchoolID != nil {
+		globalContext := s.buildUserContext(ctx, userUUID, nil)
+		if globalContext != nil {
+			globalContext.SchoolID = targetSchoolID.String()
+			activeContext = globalContext
+		}
+	}
 	if activeContext == nil {
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
