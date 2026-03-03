@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-03-03
+
+### Tipo de Release: patch
+
+- fix(tests): remove ResourceKey from Permission struct literals
+- chore(deps): bump edugo-shared/auth to v0.52.0 and repository to v0.3.2
+- fix: address PR review comments on permissions and refresh token
+- chore(deps): bump edugo-infrastructure/postgres to v0.58.0
+- feat(permissions): fix CRUD, status filter chips, refresh token school context
+
+---
+
 ## [0.8.0] - 2026-03-02
 
 ### Tipo de Release: patch
