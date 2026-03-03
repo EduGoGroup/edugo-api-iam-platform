@@ -1,0 +1,5 @@
+# Solo el binario compilado y el Dockerfile van al contexto.
+# La compilación ocurre en el CI (Job 2), no en el Dockerfile.
+*
+!Dockerfile
+!main
