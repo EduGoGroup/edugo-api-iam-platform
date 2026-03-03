@@ -52,6 +52,10 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 			}
 		}
 	}
+	if isActiveStr := c.Query("is_active"); isActiveStr != "" {
+		val := isActiveStr == "true"
+		filters.IsActive = &val
+	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)
 	if err != nil {
 		_ = c.Error(err)

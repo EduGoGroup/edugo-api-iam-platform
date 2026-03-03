@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"strings"
+
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 )
 
@@ -29,6 +31,7 @@ type PermissionDTO struct {
 	ResourceKey string `json:"resource_key"`
 	Action      string `json:"action"`
 	Scope       string `json:"scope"`
+	IsActive    bool   `json:"is_active"`
 }
 
 // PermissionsResponse wraps a list of permissions
@@ -84,6 +87,7 @@ type UpdatePermissionRequest struct {
 	DisplayName *string `json:"display_name"`
 	Description *string `json:"description"`
 	Scope       *string `json:"scope"`
+	IsActive    *bool   `json:"is_active"`
 }
 
 // AssignPermissionRequest represents the request to assign a permission to a role
@@ -146,9 +150,10 @@ func ToPermissionDTO(perm *entities.Permission) *PermissionDTO {
 		Name:        perm.Name,
 		DisplayName: perm.DisplayName,
 		ResourceID:  perm.ResourceID.String(),
-		ResourceKey: perm.ResourceKey,
+		ResourceKey: strings.SplitN(perm.Name, ":", 2)[0],
 		Action:      perm.Action,
 		Scope:       perm.Scope,
+		IsActive:    perm.IsActive,
 	}
 	if perm.Description != nil {
 		d.Description = *perm.Description

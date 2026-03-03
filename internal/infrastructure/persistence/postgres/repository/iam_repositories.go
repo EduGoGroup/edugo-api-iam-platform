@@ -88,7 +88,11 @@ func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUI
 }
 
 func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
-	query := r.db.WithContext(ctx).Where("is_active = true")
+	query := r.db.WithContext(ctx)
+	if filters.IsActive != nil {
+		query = query.Where("is_active = ?", *filters.IsActive)
+	}
+	// No IsActive filter → return all (active + inactive), callers decide via param
 	query = filters.ApplySearch(query)
 	var perms []*entities.Permission
 	err := query.Order("name").Find(&perms).Error
