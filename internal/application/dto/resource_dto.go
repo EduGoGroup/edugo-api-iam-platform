@@ -22,6 +22,8 @@ type ResourceDTO struct {
 type ResourcesResponse struct {
 	Resources []ResourceDTO `json:"resources"`
 	Total     int           `json:"total"`
+	Page      int           `json:"page"`
+	Limit     int           `json:"limit"`
 }
 
 // CreateResourceRequest represents the request to create a resource

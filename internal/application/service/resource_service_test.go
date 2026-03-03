@@ -27,7 +27,7 @@ func TestResourceService_ListResources(t *testing.T) {
 			{ID: uuid.New(), Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true, IsMenuVisible: true},
 		}
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return resources, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return resources, len(resources), nil },
 		}
 
 		svc := newResourceService(repo)
@@ -45,7 +45,7 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("retorna lista vacía correctamente", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return []*entities.Resource{}, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return []*entities.Resource{}, 0, nil },
 		}
 		svc := newResourceService(repo)
 		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
@@ -59,7 +59,7 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return nil, errors.New("db fail") },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return nil, 0, errors.New("db fail") },
 		}
 		svc := newResourceService(repo)
 		_, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
@@ -69,9 +69,9 @@ func TestResourceService_ListResources(t *testing.T) {
 	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
 		var capturedFilters sharedrepo.ListFilters
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
 				capturedFilters = filters
-				return []*entities.Resource{}, nil
+				return []*entities.Resource{}, 0, nil
 			},
 		}
 		svc := newResourceService(repo)

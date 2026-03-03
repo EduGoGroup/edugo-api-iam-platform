@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -49,6 +50,16 @@ func (h *ResourceHandler) ListResources(c *gin.Context) {
 			}
 		}
 	}
+	if pageStr := c.Query("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			filters.Page = page
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			filters.Limit = limit
+		}
+	}
 	resources, err := h.resourceService.ListResources(c.Request.Context(), filters)
 	if err != nil {
 		_ = c.Error(err)
@@ -92,8 +103,8 @@ func (h *ResourceHandler) GetResource(c *gin.Context) {
 // @Router /resources [post]
 func (h *ResourceHandler) CreateResource(c *gin.Context) {
 	var req dto.CreateResourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	resource, err := h.resourceService.CreateResource(c.Request.Context(), req)
@@ -121,8 +132,8 @@ func (h *ResourceHandler) CreateResource(c *gin.Context) {
 func (h *ResourceHandler) UpdateResource(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.UpdateResourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	resource, err := h.resourceService.UpdateResource(c.Request.Context(), id, req)

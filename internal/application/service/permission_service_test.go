@@ -24,7 +24,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		}
 
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return perms, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) { return perms, len(perms), nil }},
 			&mockResourceRepo{},
 			&mockLogger{},
 		)
@@ -43,7 +43,7 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("retorna lista vacía sin error", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) { return []*entities.Permission{}, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) { return []*entities.Permission{}, 0, nil }},
 			&mockResourceRepo{},
 			&mockLogger{},
 		)
@@ -59,8 +59,8 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
-				return nil, errors.New("db error")
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
+				return nil, 0, errors.New("db error")
 			}},
 			&mockResourceRepo{},
 			&mockLogger{},
@@ -82,9 +82,9 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
 		var capturedFilters sharedrepo.ListFilters
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
 				capturedFilters = filters
-				return []*entities.Permission{}, nil
+				return []*entities.Permission{}, 0, nil
 			}},
 			&mockResourceRepo{},
 			&mockLogger{},

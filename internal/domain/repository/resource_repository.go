@@ -9,7 +9,7 @@ import (
 )
 
 type ResourceRepository interface {
-	FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error)
+	FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*entities.Resource, error)
 	FindMenuVisible(ctx context.Context) ([]*entities.Resource, error)
 	Create(ctx context.Context, resource *entities.Resource) error

@@ -63,6 +63,16 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 		}
 		filters.IsActive = &val
 	}
+	if pageStr := c.Query("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			filters.Page = page
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			filters.Limit = limit
+		}
+	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)
 	if err != nil {
 		_ = c.Error(err)
@@ -106,8 +116,8 @@ func (h *PermissionHandler) GetPermission(c *gin.Context) {
 // @Router /permissions [post]
 func (h *PermissionHandler) CreatePermission(c *gin.Context) {
 	var req dto.CreatePermissionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	perm, err := h.permissionService.CreatePermission(c.Request.Context(), &req)
@@ -135,8 +145,8 @@ func (h *PermissionHandler) CreatePermission(c *gin.Context) {
 func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.UpdatePermissionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	perm, err := h.permissionService.UpdatePermission(c.Request.Context(), id, &req)
