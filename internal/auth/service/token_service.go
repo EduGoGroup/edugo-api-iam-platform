@@ -31,32 +31,37 @@ func NewTokenService(jwtManager *auth.JWTManager, accessDuration, refreshDuratio
 	}
 }
 
-// GenerateRefreshJWT generates a refresh token as a JWT with minimal claims (no ActiveContext)
-func (s *TokenService) GenerateRefreshJWT(userID, email string) (string, int64, error) {
-	token, expiresAt, err := s.jwtManager.GenerateMinimalToken(userID, email, s.refreshDuration)
+// GenerateRefreshJWT generates a refresh token embedding schoolID so the backend
+// can reconstruct the correct school context on token rotation without losing the
+// school the user selected (including via switchContext).
+func (s *TokenService) GenerateRefreshJWT(userID, email, schoolID string) (string, int64, error) {
+	token, expiresAt, err := s.jwtManager.GenerateMinimalToken(userID, email, schoolID, s.refreshDuration)
 	if err != nil {
 		return "", 0, err
 	}
 	return token, int64(time.Until(expiresAt).Seconds()), nil
 }
 
-// ValidateRefreshJWT validates a refresh token JWT and returns userID and email
-func (s *TokenService) ValidateRefreshJWT(token string) (string, string, error) {
+// ValidateRefreshJWT validates a refresh token JWT and returns userID, email and schoolID.
+// schoolID may be empty for legacy tokens or users without an active school context.
+func (s *TokenService) ValidateRefreshJWT(token string) (string, string, string, error) {
 	claims, err := s.jwtManager.ValidateMinimalToken(token)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return claims.UserID, claims.Email, nil
+	return claims.UserID, claims.Email, claims.SchoolID, nil
 }
 
-// GenerateTokenPairWithContext generates an access+refresh token pair with RBAC context
+// GenerateTokenPairWithContext generates an access+refresh token pair with RBAC context.
+// The schoolID from activeContext is embedded in the refresh token so context is preserved
+// across token rotations.
 func (s *TokenService) GenerateTokenPairWithContext(userID, email string, activeContext *auth.UserContext) (*dto.LoginResponse, error) {
 	accessToken, expiresAt, err := s.jwtManager.GenerateTokenWithContext(userID, email, activeContext, s.accessDuration)
 	if err != nil {
 		return nil, fmt.Errorf("error generating access token: %w", err)
 	}
 
-	refreshJWT, _, err := s.GenerateRefreshJWT(userID, email)
+	refreshJWT, _, err := s.GenerateRefreshJWT(userID, email, activeContext.SchoolID)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %w", err)
 	}

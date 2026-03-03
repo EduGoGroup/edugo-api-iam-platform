@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,9 @@ func NewPermissionHandler(permissionService service.PermissionService, logger lo
 // @Security BearerAuth
 // @Param search query string false "Search term (ILIKE)"
 // @Param search_fields query string false "Comma-separated fields to search"
+// @Param is_active query boolean false "Filter by active status (true=active, false=inactive); omit to return all"
 // @Success 200 {object} dto.PermissionsResponse
+// @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /permissions [get]
 func (h *PermissionHandler) ListPermissions(c *gin.Context) {
@@ -51,6 +54,14 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 				filters.SearchFields = cleanFields
 			}
 		}
+	}
+	if isActiveStr := c.Query("is_active"); isActiveStr != "" {
+		val, parseErr := strconv.ParseBool(isActiveStr)
+		if parseErr != nil {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "is_active must be true or false", Code: "INVALID_REQUEST"})
+			return
+		}
+		filters.IsActive = &val
 	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)
 	if err != nil {

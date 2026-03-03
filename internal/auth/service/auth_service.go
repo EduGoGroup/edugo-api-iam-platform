@@ -158,7 +158,7 @@ func (s *authService) Logout(_ context.Context, _ string) error {
 // RefreshToken validates a refresh token JWT and generates new access + refresh tokens
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 	// 1. Validate refresh token JWT
-	userID, _, err := s.tokenService.ValidateRefreshJWT(refreshToken)
+	userID, _, schoolIDFromToken, err := s.tokenService.ValidateRefreshJWT(refreshToken)
 	if err != nil {
 		return nil, ErrInvalidRefreshToken
 	}
@@ -179,11 +179,35 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, ErrUserInactive
 	}
 
-	// 3. Get user's current school from existing memberships
-	_, firstSchoolID := s.getUserSchools(ctx, userUUID)
+	// 3. Determine target school: prefer schoolID embedded in the refresh token
+	// (set at login or switchContext) to preserve the school the user selected.
+	// Fall back to firstSchoolID from memberships only for legacy tokens without schoolID.
+	var targetSchoolID *uuid.UUID
+	if schoolIDFromToken != "" {
+		sid, parseErr := uuid.Parse(schoolIDFromToken)
+		if parseErr != nil {
+			// Signed JWT contains a non-parseable schoolID — reject to avoid silent context switch.
+			s.logger.Warn("invalid schoolID in refresh token", "user_id", userID, "school_id", schoolIDFromToken)
+			return nil, ErrInvalidRefreshToken
+		}
+		targetSchoolID = &sid
+	}
+	if targetSchoolID == nil {
+		_, targetSchoolID = s.getUserSchools(ctx, userUUID)
+	}
 
-	// 4. Rebuild RBAC context
-	activeContext := s.buildUserContext(ctx, userUUID, firstSchoolID)
+	// 4. Rebuild RBAC context.
+	// For global roles (e.g. super_admin) that have school_id = NULL in user_roles,
+	// buildUserContext with a school-scoped targetSchoolID returns nil.
+	// Mirror SwitchContext: fall back to a global context and pin the schoolID manually.
+	activeContext := s.buildUserContext(ctx, userUUID, targetSchoolID)
+	if activeContext == nil && targetSchoolID != nil {
+		globalContext := s.buildUserContext(ctx, userUUID, nil)
+		if globalContext != nil {
+			globalContext.SchoolID = targetSchoolID.String()
+			activeContext = globalContext
+		}
+	}
 	if activeContext == nil {
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
@@ -194,8 +218,8 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, fmt.Errorf("error generating access token: %w", err)
 	}
 
-	// 6. Generate new refresh token (rotation)
-	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, user.Email)
+	// 6. Rotate refresh token preserving the resolved schoolID
+	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, user.Email, activeContext.SchoolID)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %w", err)
 	}

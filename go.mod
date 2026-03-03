@@ -3,12 +3,12 @@ module github.com/EduGoGroup/edugo-api-iam-platform
 go 1.25.0
 
 require (
-	github.com/EduGoGroup/edugo-infrastructure/postgres v0.57.0
-	github.com/EduGoGroup/edugo-shared/auth v0.51.1
+	github.com/EduGoGroup/edugo-infrastructure/postgres v0.58.0
+	github.com/EduGoGroup/edugo-shared/auth v0.52.0
 	github.com/EduGoGroup/edugo-shared/common v0.51.0
 	github.com/EduGoGroup/edugo-shared/logger v0.50.1
 	github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2
-	github.com/EduGoGroup/edugo-shared/repository v0.3.1
+	github.com/EduGoGroup/edugo-shared/repository v0.3.2
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0

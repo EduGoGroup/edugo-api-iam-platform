@@ -78,7 +78,8 @@ func NewPostgresPermissionRepository(db *gorm.DB) repository.PermissionRepositor
 
 func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Permission, error) {
 	var p entities.Permission
-	if err := r.db.WithContext(ctx).Where("is_active = true").First(&p, "id = ?", id).Error; err != nil {
+	// No is_active filter: allows fetching inactive permissions for update/reactivation.
+	if err := r.db.WithContext(ctx).First(&p, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -88,7 +89,11 @@ func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUI
 }
 
 func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
-	query := r.db.WithContext(ctx).Where("is_active = true")
+	query := r.db.WithContext(ctx)
+	if filters.IsActive != nil {
+		query = query.Where("is_active = ?", *filters.IsActive)
+	}
+	// No IsActive filter → return all (active + inactive), callers decide via param
 	query = filters.ApplySearch(query)
 	var perms []*entities.Permission
 	err := query.Order("name").Find(&perms).Error

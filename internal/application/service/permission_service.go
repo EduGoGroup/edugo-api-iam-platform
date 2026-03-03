@@ -92,7 +92,6 @@ func (s *permissionService) CreatePermission(ctx context.Context, req *dto.Creat
 		Name:        req.Name,
 		DisplayName: req.DisplayName,
 		ResourceID:  resourceID,
-		ResourceKey: resource.Key,
 		Action:      req.Action,
 		Scope:       req.Scope,
 		IsActive:    true,
@@ -132,6 +131,9 @@ func (s *permissionService) UpdatePermission(ctx context.Context, id string, req
 	}
 	if req.Scope != nil {
 		perm.Scope = *req.Scope
+	}
+	if req.IsActive != nil {
+		perm.IsActive = *req.IsActive
 	}
 
 	perm.UpdatedAt = time.Now()
