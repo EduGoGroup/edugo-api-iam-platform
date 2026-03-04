@@ -166,6 +166,8 @@ definitions:
         type: string
       id:
         type: string
+      is_active:
+        type: boolean
       name:
         type: string
       resource_id:
@@ -177,10 +179,16 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse:
     properties:
+      limit:
+        type: integer
+      page:
+        type: integer
       permissions:
         items:
           $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO'
         type: array
+      total:
+        type: integer
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO:
     properties:
@@ -207,6 +215,10 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse:
     properties:
+      limit:
+        type: integer
+      page:
+        type: integer
       resources:
         items:
           $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourceDTO'
@@ -238,10 +250,16 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse:
     properties:
+      limit:
+        type: integer
+      page:
+        type: integer
       roles:
         items:
           $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO'
         type: array
+      total:
+        type: integer
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ScreenBundle:
     properties:
@@ -289,6 +307,8 @@ definitions:
         type: string
       display_name:
         type: string
+      is_active:
+        type: boolean
       scope:
         type: string
     type: object
@@ -843,6 +863,22 @@ paths:
         in: query
         name: search_fields
         type: string
+      - description: Filter by active status (true=active, false=inactive); omit to
+          return all
+        in: query
+        name: is_active
+        type: boolean
+      - description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -850,6 +886,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -999,6 +1039,17 @@ paths:
         in: query
         name: search_fields
         type: string
+      - description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -1006,6 +1057,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1131,6 +1186,17 @@ paths:
         in: query
         name: search_fields
         type: string
+      - description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 200
+        minimum: 1
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -1138,6 +1204,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
