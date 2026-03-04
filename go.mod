@@ -4,12 +4,12 @@ go 1.25.0
 
 require (
 	github.com/EduGoGroup/edugo-infrastructure/postgres v0.58.0
+	github.com/EduGoGroup/edugo-shared/audit v0.1.0
+	github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.0
 	github.com/EduGoGroup/edugo-shared/auth v0.52.0
-	github.com/EduGoGroup/edugo-shared/common v0.52.0
+	github.com/EduGoGroup/edugo-shared/common v0.53.0
 	github.com/EduGoGroup/edugo-shared/logger v0.50.1
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2
-	github.com/EduGoGroup/edugo-shared/audit v0.0.0-00010101000000-000000000000
-	github.com/EduGoGroup/edugo-shared/audit/postgres v0.0.0-00010101000000-000000000000
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.0
 	github.com/EduGoGroup/edugo-shared/repository v0.3.3
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0
@@ -77,7 +77,3 @@ require (
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace github.com/EduGoGroup/edugo-shared/audit => ../edugo-shared/audit
-
-replace github.com/EduGoGroup/edugo-shared/audit/postgres => ../edugo-shared/audit/postgres

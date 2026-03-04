@@ -4,10 +4,14 @@ github.com/EduGoGroup/edugo-shared/auth v0.52.0 h1:PAhXqFXs/+47YmgbFigv0zG7SkAlY
 github.com/EduGoGroup/edugo-shared/auth v0.52.0/go.mod h1:nsrPpHwlIXnRys4iq3FX/U3lnjoVPWVl9Iem12lR+3w=
 github.com/EduGoGroup/edugo-shared/common v0.52.0 h1:1bKVyiVbiVcjvfxM7t6VkkggZ+9qDnnlBEWyj7Lpk6E=
 github.com/EduGoGroup/edugo-shared/common v0.52.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
+github.com/EduGoGroup/edugo-shared/common v0.53.0 h1:YYtvBHTP3z/a6myz7t+OPBfbBKf/EDjqnFh1nVcjJyI=
+github.com/EduGoGroup/edugo-shared/common v0.53.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1 h1:glii4TebN8g6XJQUdcg2ibR18PM5q6Uw/Gsl6PZbArw=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1/go.mod h1:S4RAQUh0bq697MiQBh9rhrvf/hSt7PbRfr0wgtZy7is=
 github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2 h1:1vQ+lTltPVgKre7OHKEQHQFPqiAwW1qpks2+2dDRsqg=
 github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2/go.mod h1:pku80JS2VslW1qiSQ4MlWKZJtgMo13uKLKHei45z5BU=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.0 h1:LDrpxwaq31wUAE5/zeHFDaitqfLu/ACqCQXXaEAhj+k=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.0/go.mod h1:VvLXgcx1K/y/H1GZxAWMGZ8PAzd0J8dQ5+oRa1Jsymo=
 github.com/EduGoGroup/edugo-shared/repository v0.3.2 h1:skChE4IEapvawNJzMu2416wdUpt8nTVq5j6myzM938E=
 github.com/EduGoGroup/edugo-shared/repository v0.3.2/go.mod h1:jzPpzi0HG6JDQGWBAJosf5ali4QLlCjM7lCG0emdMD4=
 github.com/EduGoGroup/edugo-shared/repository v0.3.3 h1:soqyrghoDcLHLJvzadCsG6S//T9zfBhQiaFn0mSMxM4=
