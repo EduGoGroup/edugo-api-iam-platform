@@ -61,7 +61,9 @@ func (s *roleService) GetRoles(ctx context.Context, scope string, filters shared
 		page = 1
 	}
 	limit := filters.Limit
-	if limit == 0 {
+	if filters.Page > 0 && filters.Limit == 0 {
+		limit = 50
+	} else if limit == 0 {
 		limit = total
 	}
 	return &dto.RolesResponse{

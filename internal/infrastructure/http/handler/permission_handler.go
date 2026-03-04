@@ -34,6 +34,8 @@ func NewPermissionHandler(permissionService service.PermissionService, logger lo
 // @Param search query string false "Search term (ILIKE)"
 // @Param search_fields query string false "Comma-separated fields to search"
 // @Param is_active query boolean false "Filter by active status (true=active, false=inactive); omit to return all"
+// @Param page query int false "Page number (1-based)" minimum(1)
+// @Param limit query int false "Items per page" minimum(1) maximum(200)
 // @Success 200 {object} dto.PermissionsResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
@@ -64,14 +66,20 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 		filters.IsActive = &val
 	}
 	if pageStr := c.Query("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			filters.Page = page
+		page, err := strconv.Atoi(pageStr)
+		if err != nil || page <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "page must be a positive integer", Code: "INVALID_REQUEST"})
+			return
 		}
+		filters.Page = page
 	}
 	if limitStr := c.Query("limit"); limitStr != "" {
-		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
-			filters.Limit = limit
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "limit must be a positive integer", Code: "INVALID_REQUEST"})
+			return
 		}
+		filters.Limit = limit
 	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)
 	if err != nil {

@@ -28,10 +28,23 @@ func bindJSON(c *gin.Context, v interface{}) error {
 }
 
 func toSnakeCase(s string) string {
+	if s == "" {
+		return ""
+	}
+	runes := []rune(s)
 	var result []rune
-	for i, r := range s {
+	for i, r := range runes {
 		if i > 0 && unicode.IsUpper(r) {
-			result = append(result, '_')
+			prev := runes[i-1]
+			hasNext := i+1 < len(runes)
+			var next rune
+			if hasNext {
+				next = runes[i+1]
+			}
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) ||
+				(unicode.IsUpper(prev) && hasNext && unicode.IsLower(next)) {
+				result = append(result, '_')
+			}
 		}
 		result = append(result, unicode.ToLower(r))
 	}

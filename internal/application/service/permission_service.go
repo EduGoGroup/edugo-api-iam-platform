@@ -47,7 +47,9 @@ func (s *permissionService) ListPermissions(ctx context.Context, filters sharedr
 		page = 1
 	}
 	limit := filters.Limit
-	if limit == 0 {
+	if filters.Page > 0 && filters.Limit == 0 {
+		limit = 50
+	} else if limit == 0 {
 		limit = total
 	}
 	return &dto.PermissionsResponse{

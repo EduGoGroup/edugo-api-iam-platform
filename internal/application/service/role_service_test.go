@@ -131,6 +131,76 @@ func TestRoleService_GetRoles(t *testing.T) {
 			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
 		}
 	})
+
+	t.Run("metadatos de paginación: page y limit se propagan correctamente", func(t *testing.T) {
+		roles := []*entities.Role{
+			{ID: uuid.New(), Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true},
+		}
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return roles, 50, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{Page: 3, Limit: 15})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Total != 50 {
+			t.Errorf("Total incorrecto: esperaba 50, obtuvo %d", resp.Total)
+		}
+		if resp.Page != 3 {
+			t.Errorf("Page incorrecto: esperaba 3, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 15 {
+			t.Errorf("Limit incorrecto: esperaba 15, obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: sin page ni limit usa defaults (page=1, limit=total)", func(t *testing.T) {
+		roles := []*entities.Role{
+			{ID: uuid.New(), Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true},
+			{ID: uuid.New(), Name: "teacher", DisplayName: "Teacher", Scope: "school", IsActive: true},
+		}
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return roles, 2, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page default incorrecto: esperaba 1, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 2 {
+			t.Errorf("Limit default incorrecto: esperaba total(2), obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: page>0 y limit=0 aplica default de 50", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return []*entities.Role{}, 300, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{Page: 1, Limit: 0})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Limit != 50 {
+			t.Errorf("Limit default esperaba 50 cuando page>0 y limit=0, obtuvo %d", resp.Limit)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page incorrecto: esperaba 1, obtuvo %d", resp.Page)
+		}
+	})
 }
 
 // ─── GetRole ─────────────────────────────────────────────────────────────────
