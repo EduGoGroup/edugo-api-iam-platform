@@ -8,7 +8,6 @@ import (
 	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -16,10 +15,7 @@ import (
 
 type mockAuditLogger struct{}
 
-func (m *mockAuditLogger) Log(_ context.Context, _ audit.AuditEvent) error       { return nil }
-func (m *mockAuditLogger) LogFromGin(_ *gin.Context, _, _, _ string, _ ...audit.AuditOption) error {
-	return nil
-}
+func (m *mockAuditLogger) Log(_ context.Context, _ audit.AuditEvent) error { return nil }
 
 // ─── Logger mock ─────────────────────────────────────────────────────────────
 
