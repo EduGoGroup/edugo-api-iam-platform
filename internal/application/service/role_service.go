@@ -46,16 +46,32 @@ func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repositor
 
 func (s *roleService) GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error) {
 	var roles []*entities.Role
+	var total int
 	var err error
 	if scope != "" {
-		roles, err = s.roleRepo.FindByScope(ctx, scope, filters)
+		roles, total, err = s.roleRepo.FindByScope(ctx, scope, filters)
 	} else {
-		roles, err = s.roleRepo.FindAll(ctx, filters)
+		roles, total, err = s.roleRepo.FindAll(ctx, filters)
 	}
 	if err != nil {
 		return nil, errors.NewDatabaseError("list roles", err)
 	}
-	return &dto.RolesResponse{Roles: dto.ToRoleDTOList(roles)}, nil
+	page := filters.Page
+	if page == 0 {
+		page = 1
+	}
+	limit := filters.Limit
+	if filters.Page > 0 && filters.Limit == 0 {
+		limit = 50
+	} else if limit == 0 {
+		limit = total
+	}
+	return &dto.RolesResponse{
+		Roles: dto.ToRoleDTOList(roles),
+		Total: total,
+		Page:  page,
+		Limit: limit,
+	}, nil
 }
 
 func (s *roleService) GetRole(ctx context.Context, id string) (*dto.RoleDTO, error) {

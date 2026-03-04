@@ -19,6 +19,9 @@ type RoleDTO struct {
 // RolesResponse wraps a list of roles
 type RolesResponse struct {
 	Roles []*RoleDTO `json:"roles"`
+	Total int        `json:"total"`
+	Page  int        `json:"page"`
+	Limit int        `json:"limit"`
 }
 
 // PermissionDTO represents a permission in API responses
@@ -37,6 +40,9 @@ type PermissionDTO struct {
 // PermissionsResponse wraps a list of permissions
 type PermissionsResponse struct {
 	Permissions []*PermissionDTO `json:"permissions"`
+	Total       int              `json:"total"`
+	Page        int              `json:"page"`
+	Limit       int              `json:"limit"`
 }
 
 // UserRoleDTO represents a user-role assignment

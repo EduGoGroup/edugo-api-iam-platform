@@ -31,20 +31,40 @@ func (r *postgresRoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*e
 	return &role, nil
 }
 
-func (r *postgresRoleRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+func (r *postgresRoleRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+	var total int64
+	countQuery := r.db.WithContext(ctx).Model(&entities.Role{}).Where("is_active = true")
+	countQuery = filters.ApplySearch(countQuery)
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	query := r.db.WithContext(ctx).Where("is_active = true")
 	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
 	var roles []*entities.Role
-	err := query.Order("name").Find(&roles).Error
-	return roles, err
+	if err := query.Order("name").Find(&roles).Error; err != nil {
+		return nil, 0, err
+	}
+	return roles, int(total), nil
 }
 
-func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+	var total int64
+	countQuery := r.db.WithContext(ctx).Model(&entities.Role{}).Where("scope = ? AND is_active = true", scope)
+	countQuery = filters.ApplySearch(countQuery)
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	query := r.db.WithContext(ctx).Where("scope = ? AND is_active = true", scope)
 	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
 	var roles []*entities.Role
-	err := query.Order("name").Find(&roles).Error
-	return roles, err
+	if err := query.Order("name").Find(&roles).Error; err != nil {
+		return nil, 0, err
+	}
+	return roles, int(total), nil
 }
 
 func (r *postgresRoleRepository) Create(ctx context.Context, role *entities.Role) error {
@@ -88,16 +108,28 @@ func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUI
 	return &p, nil
 }
 
-func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error) {
+func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
+	var total int64
+	countQuery := r.db.WithContext(ctx).Model(&entities.Permission{})
+	if filters.IsActive != nil {
+		countQuery = countQuery.Where("is_active = ?", *filters.IsActive)
+	}
+	countQuery = filters.ApplySearch(countQuery)
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	query := r.db.WithContext(ctx)
 	if filters.IsActive != nil {
 		query = query.Where("is_active = ?", *filters.IsActive)
 	}
-	// No IsActive filter → return all (active + inactive), callers decide via param
 	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
 	var perms []*entities.Permission
-	err := query.Order("name").Find(&perms).Error
-	return perms, err
+	if err := query.Order("name").Find(&perms).Error; err != nil {
+		return nil, 0, err
+	}
+	return perms, int(total), nil
 }
 
 func (r *postgresPermissionRepository) FindByRole(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error) {
@@ -267,12 +299,22 @@ func NewPostgresResourceRepository(db *gorm.DB) repository.ResourceRepository {
 	return &postgresResourceRepository{db: db}
 }
 
-func (r *postgresResourceRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+func (r *postgresResourceRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
+	var total int64
+	countQuery := r.db.WithContext(ctx).Model(&entities.Resource{}).Where("is_active = true")
+	countQuery = filters.ApplySearch(countQuery)
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	query := r.db.WithContext(ctx).Where("is_active = true")
 	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
 	var resources []*entities.Resource
-	err := query.Order("sort_order").Find(&resources).Error
-	return resources, err
+	if err := query.Order("sort_order").Find(&resources).Error; err != nil {
+		return nil, 0, err
+	}
+	return resources, int(total), nil
 }
 
 func (r *postgresResourceRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Resource, error) {

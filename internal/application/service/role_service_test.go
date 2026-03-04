@@ -28,7 +28,7 @@ func TestRoleService_GetRoles(t *testing.T) {
 			{ID: uuid.New(), Name: "teacher", DisplayName: "Teacher", Scope: "school", IsActive: true},
 		}
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return roles, nil },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return roles, len(roles), nil },
 		}
 
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
@@ -47,9 +47,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 		}
 		var capturedScope string
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, error) {
+			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
 				capturedScope = scope
-				return roles, nil
+				return roles, len(roles), nil
 			},
 		}
 
@@ -68,7 +68,7 @@ func TestRoleService_GetRoles(t *testing.T) {
 
 	t.Run("propaga error de base de datos en FindAll", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return nil, errors.New("db error") },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return nil, 0, errors.New("db error") },
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
@@ -78,7 +78,7 @@ func TestRoleService_GetRoles(t *testing.T) {
 
 	t.Run("propaga error de base de datos en FindByScope", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, error) { return nil, errors.New("db error") },
+			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return nil, 0, errors.New("db error") },
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
@@ -89,9 +89,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 	t.Run("pasa filtros al repositorio en FindAll correctamente", func(t *testing.T) {
 		var capturedFilters sharedrepo.ListFilters
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
 				capturedFilters = filters
-				return []*entities.Role{}, nil
+				return []*entities.Role{}, 0, nil
 			},
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
@@ -112,9 +112,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 	t.Run("pasa filtros al repositorio en FindByScope correctamente", func(t *testing.T) {
 		var capturedFilters sharedrepo.ListFilters
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, error) {
+			findByScopeFn: func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
 				capturedFilters = filters
-				return []*entities.Role{}, nil
+				return []*entities.Role{}, 0, nil
 			},
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
@@ -129,6 +129,76 @@ func TestRoleService_GetRoles(t *testing.T) {
 		}
 		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
 			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
+
+	t.Run("metadatos de paginación: page y limit se propagan correctamente", func(t *testing.T) {
+		roles := []*entities.Role{
+			{ID: uuid.New(), Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true},
+		}
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return roles, 50, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{Page: 3, Limit: 15})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Total != 50 {
+			t.Errorf("Total incorrecto: esperaba 50, obtuvo %d", resp.Total)
+		}
+		if resp.Page != 3 {
+			t.Errorf("Page incorrecto: esperaba 3, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 15 {
+			t.Errorf("Limit incorrecto: esperaba 15, obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: sin page ni limit usa defaults (page=1, limit=total)", func(t *testing.T) {
+		roles := []*entities.Role{
+			{ID: uuid.New(), Name: "admin", DisplayName: "Admin", Scope: "platform", IsActive: true},
+			{ID: uuid.New(), Name: "teacher", DisplayName: "Teacher", Scope: "school", IsActive: true},
+		}
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return roles, 2, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page default incorrecto: esperaba 1, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 2 {
+			t.Errorf("Limit default incorrecto: esperaba total(2), obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: page>0 y limit=0 aplica default de 50", func(t *testing.T) {
+		roleRepo := &mockRoleRepo{
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return []*entities.Role{}, 300, nil
+			},
+		}
+		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
+
+		resp, err := svc.GetRoles(ctx, "", sharedrepo.ListFilters{Page: 1, Limit: 0})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Limit != 50 {
+			t.Errorf("Limit default esperaba 50 cuando page>0 y limit=0, obtuvo %d", resp.Limit)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page incorrecto: esperaba 1, obtuvo %d", resp.Page)
 		}
 	})
 }

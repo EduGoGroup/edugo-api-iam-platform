@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,10 @@ func NewResourceHandler(resourceService service.ResourceService, logger logger.L
 // @Security BearerAuth
 // @Param search query string false "Search term (ILIKE)"
 // @Param search_fields query string false "Comma-separated fields to search"
+// @Param page query int false "Page number (1-based)" minimum(1)
+// @Param limit query int false "Items per page" minimum(1) maximum(200)
 // @Success 200 {object} dto.ResourcesResponse
+// @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /resources [get]
 func (h *ResourceHandler) ListResources(c *gin.Context) {
@@ -48,6 +52,22 @@ func (h *ResourceHandler) ListResources(c *gin.Context) {
 				filters.SearchFields = cleanFields
 			}
 		}
+	}
+	if pageStr := c.Query("page"); pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
+		if err != nil || page <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "page must be a positive integer", Code: "INVALID_REQUEST"})
+			return
+		}
+		filters.Page = page
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "limit must be a positive integer", Code: "INVALID_REQUEST"})
+			return
+		}
+		filters.Limit = limit
 	}
 	resources, err := h.resourceService.ListResources(c.Request.Context(), filters)
 	if err != nil {
@@ -92,8 +112,8 @@ func (h *ResourceHandler) GetResource(c *gin.Context) {
 // @Router /resources [post]
 func (h *ResourceHandler) CreateResource(c *gin.Context) {
 	var req dto.CreateResourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	resource, err := h.resourceService.CreateResource(c.Request.Context(), req)
@@ -121,8 +141,8 @@ func (h *ResourceHandler) CreateResource(c *gin.Context) {
 func (h *ResourceHandler) UpdateResource(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.UpdateResourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	resource, err := h.resourceService.UpdateResource(c.Request.Context(), id, req)

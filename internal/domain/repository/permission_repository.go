@@ -10,7 +10,7 @@ import (
 
 type PermissionRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
-	FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, error)
+	FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error)
 	FindByRole(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
 	Create(ctx context.Context, perm *entities.Permission) error
 	Update(ctx context.Context, perm *entities.Permission) error
