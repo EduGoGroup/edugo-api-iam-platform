@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-03-04
+
+### Tipo de Release: patch
+
+- chore: bump repository to v0.3.3 (ApplyPagination + int64 totals)
+- chore(deps): bump shared/common to v0.52.0
+- fix(pagination): address code review comments from PR #18
+- feat(pagination): implement real pagination with COUNT for IAM endpoints
+- perf(docker): eliminate Go compilation from Docker, reduce image time ~80%
+
+---
+
 ## [0.9.0] - 2026-03-03
 
 ### Tipo de Release: patch
