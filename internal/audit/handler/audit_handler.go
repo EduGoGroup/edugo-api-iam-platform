@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -42,6 +43,14 @@ func (h *AuditHandler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
 
+	// Normalize pagination so the response matches the effective values
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
 	filters := model.AuditFilters{
 		Action:       c.Query("action"),
 		ResourceType: c.Query("resource_type"),
@@ -52,14 +61,25 @@ func (h *AuditHandler) List(c *gin.Context) {
 	}
 
 	if from := c.Query("from"); from != "" {
-		if t, err := time.Parse(time.RFC3339, from); err == nil {
-			filters.From = &t
+		t, err := time.Parse(time.RFC3339, from)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'from' timestamp, must be RFC3339"})
+			return
 		}
+		filters.From = &t
 	}
 	if to := c.Query("to"); to != "" {
-		if t, err := time.Parse(time.RFC3339, to); err == nil {
-			filters.To = &t
+		t, err := time.Parse(time.RFC3339, to)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'to' timestamp, must be RFC3339"})
+			return
 		}
+		filters.To = &t
+	}
+
+	if filters.From != nil && filters.To != nil && filters.From.After(*filters.To) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "'from' must be before or equal to 'to'"})
+		return
 	}
 
 	events, total, err := h.service.List(c.Request.Context(), filters, page, pageSize)
@@ -88,7 +108,7 @@ func (h *AuditHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	event, err := h.service.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "audit event not found"})
 			return
 		}
@@ -112,6 +132,13 @@ func (h *AuditHandler) GetByUserID(c *gin.Context) {
 	userID := c.Param("user_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
 
 	events, total, err := h.service.GetByUserID(c.Request.Context(), userID, page, pageSize)
 	if err != nil {
@@ -144,6 +171,13 @@ func (h *AuditHandler) GetByResource(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
 
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
 	events, total, err := h.service.GetByResource(c.Request.Context(), resourceType, resourceID, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get audit events"})
@@ -173,14 +207,25 @@ func (h *AuditHandler) Summary(c *gin.Context) {
 	to := now
 
 	if f := c.Query("from"); f != "" {
-		if t, err := time.Parse(time.RFC3339, f); err == nil {
-			from = t
+		t, err := time.Parse(time.RFC3339, f)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'from' timestamp, must be RFC3339"})
+			return
 		}
+		from = t
 	}
 	if t := c.Query("to"); t != "" {
-		if parsed, err := time.Parse(time.RFC3339, t); err == nil {
-			to = parsed
+		parsed, err := time.Parse(time.RFC3339, t)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'to' timestamp, must be RFC3339"})
+			return
 		}
+		to = parsed
+	}
+
+	if from.After(to) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "'from' must be before or equal to 'to'"})
+		return
 	}
 
 	summary, err := h.service.Summary(c.Request.Context(), from, to)

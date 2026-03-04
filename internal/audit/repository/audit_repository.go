@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/audit/model"
@@ -110,7 +111,20 @@ func (r *postgresAuditRepository) GetByResource(ctx context.Context, resourceTyp
 	return events, total, nil
 }
 
+// allowedCountFields is the whitelist of columns allowed for CountByField aggregation.
+var allowedCountFields = map[string]bool{
+	"action":        true,
+	"severity":      true,
+	"category":      true,
+	"resource_type": true,
+	"service_name":  true,
+}
+
 func (r *postgresAuditRepository) CountByField(ctx context.Context, field string, from, to time.Time) (map[string]int64, error) {
+	if !allowedCountFields[field] {
+		return nil, fmt.Errorf("invalid aggregation field: %s", field)
+	}
+
 	type result struct {
 		Value string `gorm:"column:value"`
 		Count int64  `gorm:"column:count"`

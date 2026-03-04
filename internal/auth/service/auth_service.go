@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/dto"
@@ -77,6 +78,9 @@ func NewAuthService(
 
 // Login validates credentials and returns JWT tokens
 func (s *authService) Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error) {
+	// Normalize email to prevent case/whitespace bypass on rate limiting
+	email = strings.ToLower(strings.TrimSpace(email))
+
 	// 0. Rate limiting: check failed attempts in last 15 minutes
 	failedCount, err := s.loginAttemptRepo.CountFailedSince(ctx, email, time.Now().Add(-15*time.Minute))
 	if err != nil {
@@ -112,7 +116,8 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// 1. Find user by email
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		recordAttempt(false)
+		// Do not record failed attempt on internal errors (DB/network) to avoid
+		// incorrectly locking out legitimate users during outages.
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {

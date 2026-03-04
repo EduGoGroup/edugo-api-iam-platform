@@ -1,6 +1,6 @@
 module github.com/EduGoGroup/edugo-api-iam-platform
 
-go 1.25.0
+go 1.25
 
 require (
 	github.com/EduGoGroup/edugo-infrastructure/postgres v0.58.0
