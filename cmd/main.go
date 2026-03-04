@@ -21,6 +21,8 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/container"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/middleware"
+	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
+	"github.com/EduGoGroup/edugo-shared/common/types/enum"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	ginmiddleware "github.com/EduGoGroup/edugo-shared/middleware/gin"
 )
@@ -116,8 +118,11 @@ func main() {
 	}
 
 	// ==================== PROTECTED ROUTES (JWT required) ====================
+	auditLogger := auditpostgres.NewPostgresAuditLogger(gormDB, "iam-platform")
+
 	v1 := r.Group("/api/v1")
 	v1.Use(ginmiddleware.JWTAuthMiddleware(c.JWTManager))
+	v1.Use(ginmiddleware.AuditMiddleware(auditLogger))
 	{
 		// Auth (protected)
 		v1.POST("/auth/logout", c.AuthHandler.Logout)
@@ -127,34 +132,34 @@ func main() {
 		// Roles
 		roles := v1.Group("/roles")
 		{
-			roles.GET("", c.RoleHandler.ListRoles)
-			roles.GET("/:id", c.RoleHandler.GetRole)
-			roles.POST("", c.RoleHandler.CreateRole)
-			roles.PUT("/:id", c.RoleHandler.UpdateRole)
-			roles.DELETE("/:id", c.RoleHandler.DeleteRole)
-			roles.GET("/:id/permissions", c.RoleHandler.GetRolePermissions)
-			roles.POST("/:id/permissions", c.RoleHandler.AssignPermission)
-			roles.DELETE("/:id/permissions/:perm_id", c.RoleHandler.RevokePermission)
-			roles.PUT("/:id/permissions/bulk", c.RoleHandler.BulkReplacePermissions)
+			roles.GET("", ginmiddleware.RequirePermission(enum.PermissionRolesRead), c.RoleHandler.ListRoles)
+			roles.GET("/:id", ginmiddleware.RequirePermission(enum.PermissionRolesRead), c.RoleHandler.GetRole)
+			roles.POST("", ginmiddleware.RequirePermission(enum.PermissionRolesCreate), c.RoleHandler.CreateRole)
+			roles.PUT("/:id", ginmiddleware.RequirePermission(enum.PermissionRolesUpdate), c.RoleHandler.UpdateRole)
+			roles.DELETE("/:id", ginmiddleware.RequirePermission(enum.PermissionRolesDelete), c.RoleHandler.DeleteRole)
+			roles.GET("/:id/permissions", ginmiddleware.RequirePermission(enum.PermissionRolesRead), c.RoleHandler.GetRolePermissions)
+			roles.POST("/:id/permissions", ginmiddleware.RequirePermission(enum.PermissionRolesUpdate), c.RoleHandler.AssignPermission)
+			roles.DELETE("/:id/permissions/:perm_id", ginmiddleware.RequirePermission(enum.PermissionRolesUpdate), c.RoleHandler.RevokePermission)
+			roles.PUT("/:id/permissions/bulk", ginmiddleware.RequirePermission(enum.PermissionRolesUpdate), c.RoleHandler.BulkReplacePermissions)
 		}
 
 		// Permissions
 		permissions := v1.Group("/permissions")
 		{
-			permissions.GET("", c.PermissionHandler.ListPermissions)
-			permissions.GET("/:id", c.PermissionHandler.GetPermission)
-			permissions.POST("", c.PermissionHandler.CreatePermission)
-			permissions.PUT("/:id", c.PermissionHandler.UpdatePermission)
-			permissions.DELETE("/:id", c.PermissionHandler.DeletePermission)
+			permissions.GET("", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtRead), c.PermissionHandler.ListPermissions)
+			permissions.GET("/:id", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtRead), c.PermissionHandler.GetPermission)
+			permissions.POST("", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtCreate), c.PermissionHandler.CreatePermission)
+			permissions.PUT("/:id", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtUpdate), c.PermissionHandler.UpdatePermission)
+			permissions.DELETE("/:id", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtDelete), c.PermissionHandler.DeletePermission)
 		}
 
 		// Resources
 		resources := v1.Group("/resources")
 		{
-			resources.GET("", c.ResourceHandler.ListResources)
-			resources.GET("/:id", c.ResourceHandler.GetResource)
-			resources.POST("", c.ResourceHandler.CreateResource)
-			resources.PUT("/:id", c.ResourceHandler.UpdateResource)
+			resources.GET("", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtRead), c.ResourceHandler.ListResources)
+			resources.GET("/:id", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtRead), c.ResourceHandler.GetResource)
+			resources.POST("", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtCreate), c.ResourceHandler.CreateResource)
+			resources.PUT("/:id", ginmiddleware.RequirePermission(enum.PermissionPermissionsMgmtUpdate), c.ResourceHandler.UpdateResource)
 		}
 
 		// Menu
@@ -164,9 +169,9 @@ func main() {
 		// User Roles
 		users := v1.Group("/users")
 		{
-			users.GET("/:user_id/roles", c.RoleHandler.GetUserRoles)
-			users.POST("/:user_id/roles", c.RoleHandler.GrantRole)
-			users.DELETE("/:user_id/roles/:role_id", c.RoleHandler.RevokeRole)
+			users.GET("/:user_id/roles", ginmiddleware.RequirePermission(enum.PermissionUsersRead), c.RoleHandler.GetUserRoles)
+			users.POST("/:user_id/roles", ginmiddleware.RequirePermission(enum.PermissionUsersUpdate), c.RoleHandler.GrantRole)
+			users.DELETE("/:user_id/roles/:role_id", ginmiddleware.RequirePermission(enum.PermissionUsersUpdate), c.RoleHandler.RevokeRole)
 		}
 
 		// Sync
@@ -181,32 +186,43 @@ func main() {
 		{
 			templates := screenConfig.Group("/templates")
 			{
-				templates.POST("", c.ScreenConfigHandler.CreateTemplate)
-				templates.GET("", c.ScreenConfigHandler.ListTemplates)
-				templates.GET("/:id", c.ScreenConfigHandler.GetTemplate)
-				templates.PUT("/:id", c.ScreenConfigHandler.UpdateTemplate)
-				templates.DELETE("/:id", c.ScreenConfigHandler.DeleteTemplate)
+				templates.POST("", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesCreate), c.ScreenConfigHandler.CreateTemplate)
+				templates.GET("", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesRead), c.ScreenConfigHandler.ListTemplates)
+				templates.GET("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesRead), c.ScreenConfigHandler.GetTemplate)
+				templates.PUT("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesUpdate), c.ScreenConfigHandler.UpdateTemplate)
+				templates.DELETE("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesDelete), c.ScreenConfigHandler.DeleteTemplate)
 			}
 			instances := screenConfig.Group("/instances")
 			{
-				instances.POST("", c.ScreenConfigHandler.CreateInstance)
-				instances.GET("", c.ScreenConfigHandler.ListInstances)
-				instances.GET("/:id", c.ScreenConfigHandler.GetInstance)
-				instances.GET("/key/:key", c.ScreenConfigHandler.GetInstanceByKey)
-				instances.PUT("/:id", c.ScreenConfigHandler.UpdateInstance)
-				instances.DELETE("/:id", c.ScreenConfigHandler.DeleteInstance)
+				instances.POST("", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesCreate), c.ScreenConfigHandler.CreateInstance)
+				instances.GET("", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesRead), c.ScreenConfigHandler.ListInstances)
+				instances.GET("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesRead), c.ScreenConfigHandler.GetInstance)
+				instances.GET("/key/:key", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesRead), c.ScreenConfigHandler.GetInstanceByKey)
+				instances.PUT("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesUpdate), c.ScreenConfigHandler.UpdateInstance)
+				instances.DELETE("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenInstancesDelete), c.ScreenConfigHandler.DeleteInstance)
 			}
-			screenConfig.GET("/version/:key", c.ScreenConfigHandler.GetScreenVersion)
+			screenConfig.GET("/version/:key", ginmiddleware.RequirePermission(enum.PermissionScreensRead), c.ScreenConfigHandler.GetScreenVersion)
 			resolve := screenConfig.Group("/resolve")
 			{
-				resolve.GET("/key/:key", c.ScreenConfigHandler.ResolveScreenByKey)
+				resolve.GET("/key/:key", ginmiddleware.RequirePermission(enum.PermissionScreensRead), c.ScreenConfigHandler.ResolveScreenByKey)
 			}
 			resourceScreens := screenConfig.Group("/resource-screens")
 			{
-				resourceScreens.POST("", c.ScreenConfigHandler.LinkScreenToResource)
-				resourceScreens.GET("/:resourceId", c.ScreenConfigHandler.GetScreensForResource)
-				resourceScreens.DELETE("/:id", c.ScreenConfigHandler.UnlinkScreen)
+				resourceScreens.POST("", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesCreate), c.ScreenConfigHandler.LinkScreenToResource)
+				resourceScreens.GET("/:resourceId", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesRead), c.ScreenConfigHandler.GetScreensForResource)
+				resourceScreens.DELETE("/:id", ginmiddleware.RequirePermission(enum.PermissionScreenTemplatesDelete), c.ScreenConfigHandler.UnlinkScreen)
 			}
+		}
+
+		// Audit endpoints
+		auditGroup := v1.Group("/audit")
+		auditGroup.Use(ginmiddleware.RequirePermission(enum.PermissionAuditRead))
+		{
+			auditGroup.GET("/events", c.AuditHandler.List)
+			auditGroup.GET("/events/:id", c.AuditHandler.GetByID)
+			auditGroup.GET("/events/user/:user_id", c.AuditHandler.GetByUserID)
+			auditGroup.GET("/events/resource/:type/:id", c.AuditHandler.GetByResource)
+			auditGroup.GET("/summary", c.AuditHandler.Summary)
 		}
 	}
 

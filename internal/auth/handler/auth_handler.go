@@ -49,9 +49,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	response, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
+	response, err := h.authService.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
 		switch {
+		case errors.Is(err, service.ErrTooManyLoginAttempts):
+			c.JSON(http.StatusTooManyRequests, dto.ErrorResponse{
+				Error:   "too_many_requests",
+				Message: "Too many login attempts, try again later",
+				Code:    "RATE_LIMITED",
+			})
 		case errors.Is(err, service.ErrInvalidCredentials):
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error:   "unauthorized",
