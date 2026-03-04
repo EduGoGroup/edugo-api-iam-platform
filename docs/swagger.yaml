@@ -462,6 +462,82 @@ definitions:
       pattern:
         type: string
     type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_audit_model.AuditEvent:
+    properties:
+      action:
+        type: string
+      actor_email:
+        type: string
+      actor_id:
+        type: string
+      actor_ip:
+        type: string
+      actor_role:
+        type: string
+      actor_user_agent:
+        type: string
+      category:
+        type: string
+      changes:
+        additionalProperties: true
+        type: object
+      created_at:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      permission_used:
+        type: string
+      request_id:
+        type: string
+      request_method:
+        type: string
+      request_path:
+        type: string
+      resource_id:
+        type: string
+      resource_type:
+        type: string
+      school_id:
+        type: string
+      service_name:
+        type: string
+      severity:
+        type: string
+      status_code:
+        type: integer
+      unit_id:
+        type: string
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_audit_model.AuditSummary:
+    properties:
+      by_action:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      by_category:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      by_resource_type:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      by_severity:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total_events:
+        type: integer
+    type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.AvailableContextsResponse:
     properties:
       available:
@@ -595,6 +671,174 @@ info:
   title: EduGo API IAM Platform
   version: "1.0"
 paths:
+  /audit/events:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by action
+        in: query
+        name: action
+        type: string
+      - description: Filter by resource type
+        in: query
+        name: resource_type
+        type: string
+      - description: Filter by severity
+        in: query
+        name: severity
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by actor ID
+        in: query
+        name: actor_id
+        type: string
+      - description: Filter by service name
+        in: query
+        name: service_name
+        type: string
+      - description: From date (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: To date (RFC3339)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List audit events
+      tags:
+      - Audit
+  /audit/events/{id}:
+    get:
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_audit_model.AuditEvent'
+      security:
+      - BearerAuth: []
+      summary: Get audit event by ID
+      tags:
+      - Audit
+  /audit/events/resource/{type}/{id}:
+    get:
+      parameters:
+      - description: Resource type
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit events by resource
+      tags:
+      - Audit
+  /audit/events/user/{user_id}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit events by user ID
+      tags:
+      - Audit
+  /audit/summary:
+    get:
+      parameters:
+      - description: From date (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: To date (RFC3339)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_audit_model.AuditSummary'
+      security:
+      - BearerAuth: []
+      summary: Get audit summary
+      tags:
+      - Audit
   /auth/contexts:
     get:
       description: Return all school contexts the authenticated user has access to

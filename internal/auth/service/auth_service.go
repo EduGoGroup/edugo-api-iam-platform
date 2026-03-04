@@ -4,31 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/dto"
+	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/model"
+	authrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/repository"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
-	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
-
+	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // Sentinel errors for auth operations
 var (
-	ErrInvalidCredentials  = errors.New("invalid credentials")
-	ErrUserNotFound        = errors.New("user not found")
-	ErrUserInactive        = errors.New("user inactive")
-	ErrInvalidRefreshToken = errors.New("invalid refresh token")
-	ErrNoMembership        = errors.New("no active membership in target school")
-	ErrInvalidSchoolID     = errors.New("invalid school_id")
+	ErrInvalidCredentials    = errors.New("invalid credentials")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrUserInactive          = errors.New("user inactive")
+	ErrInvalidRefreshToken   = errors.New("invalid refresh token")
+	ErrNoMembership          = errors.New("no active membership in target school")
+	ErrInvalidSchoolID       = errors.New("invalid school_id")
+	ErrTooManyLoginAttempts  = errors.New("too many login attempts, try again later")
 )
 
 // AuthService defines the authentication service interface
 type AuthService interface {
-	Login(ctx context.Context, email, password string) (*dto.LoginResponse, error)
+	Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error)
 	Logout(ctx context.Context, accessToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error)
 	SwitchContext(ctx context.Context, userID, targetSchoolID string) (*dto.SwitchContextResponse, error)
@@ -36,13 +40,15 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo       sharedrepo.UserRepository
-	userRoleRepo   repository.UserRoleRepository
-	roleRepo       repository.RoleRepository
-	membershipRepo sharedrepo.MembershipRepository
-	schoolRepo     sharedrepo.SchoolRepository
-	tokenService   *TokenService
-	logger         logger.Logger
+	userRepo          sharedrepo.UserRepository
+	userRoleRepo      repository.UserRoleRepository
+	roleRepo          repository.RoleRepository
+	membershipRepo    sharedrepo.MembershipRepository
+	schoolRepo        sharedrepo.SchoolRepository
+	tokenService      *TokenService
+	logger            logger.Logger
+	auditLogger       audit.AuditLogger
+	loginAttemptRepo  authrepo.LoginAttemptRepository
 }
 
 // NewAuthService creates a new auth service
@@ -54,39 +60,112 @@ func NewAuthService(
 	schoolRepo sharedrepo.SchoolRepository,
 	tokenService *TokenService,
 	logger logger.Logger,
+	auditLogger audit.AuditLogger,
+	loginAttemptRepo authrepo.LoginAttemptRepository,
 ) AuthService {
 	return &authService{
-		userRepo:       userRepo,
-		userRoleRepo:   userRoleRepo,
-		roleRepo:       roleRepo,
-		membershipRepo: membershipRepo,
-		schoolRepo:     schoolRepo,
-		tokenService:   tokenService,
-		logger:         logger,
+		userRepo:         userRepo,
+		userRoleRepo:     userRoleRepo,
+		roleRepo:         roleRepo,
+		membershipRepo:   membershipRepo,
+		schoolRepo:       schoolRepo,
+		tokenService:     tokenService,
+		logger:           logger,
+		auditLogger:      auditLogger,
+		loginAttemptRepo: loginAttemptRepo,
 	}
 }
 
 // Login validates credentials and returns JWT tokens
-func (s *authService) Login(ctx context.Context, email, password string) (*dto.LoginResponse, error) {
+func (s *authService) Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error) {
+	// Normalize email to prevent case/whitespace bypass on rate limiting
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	// 0. Rate limiting: check failed attempts in last 15 minutes
+	failedCount, err := s.loginAttemptRepo.CountFailedSince(ctx, email, time.Now().Add(-15*time.Minute))
+	if err != nil {
+		s.logger.Warn("error checking login rate limit", "email", email, "error", err)
+	}
+	if failedCount >= 5 {
+		s.logger.Warn("login rate limited", "email", email, "failed_count", failedCount)
+		return nil, ErrTooManyLoginAttempts
+	}
+
+	// Helper to record login attempt
+	recordAttempt := func(success bool) {
+		var ua, ip *string
+		if userAgent != "" {
+			ua = &userAgent
+		}
+		if clientIP != "" {
+			ip = &clientIP
+		}
+		attempt := &model.LoginAttempt{
+			Identifier:  email,
+			AttemptType: "email",
+			Successful:  success,
+			UserAgent:   ua,
+			IPAddress:   ip,
+			AttemptedAt: time.Now(),
+		}
+		if err := s.loginAttemptRepo.Create(ctx, attempt); err != nil {
+			s.logger.Warn("error recording login attempt", "email", email, "error", err)
+		}
+	}
+
 	// 1. Find user by email
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
+		// Do not record failed attempt on internal errors (DB/network) to avoid
+		// incorrectly locking out legitimate users during outages.
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {
 		s.logger.Warn("login attempt with non-existent email", "email", email)
+		recordAttempt(false)
+		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+			ActorEmail:   email,
+			ActorIP:      clientIP,
+			Action:       "login_failed",
+			ResourceType: "session",
+			ErrorMessage: "user not found",
+			Severity:     audit.SeverityWarning,
+			Category:     audit.CategoryAuth,
+		})
 		return nil, ErrInvalidCredentials
 	}
 
 	// 2. Verify user is active
 	if !user.IsActive {
 		s.logger.Warn("login attempt with inactive user", "email", email, "user_id", user.ID.String())
+		recordAttempt(false)
+		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+			ActorID:      user.ID.String(),
+			ActorEmail:   email,
+			ActorIP:      clientIP,
+			Action:       "login_failed",
+			ResourceType: "session",
+			ErrorMessage: "user inactive",
+			Severity:     audit.SeverityWarning,
+			Category:     audit.CategoryAuth,
+		})
 		return nil, ErrUserInactive
 	}
 
 	// 3. Verify password
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		s.logger.Warn("incorrect password", "email", email)
+		recordAttempt(false)
+		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+			ActorID:      user.ID.String(),
+			ActorEmail:   email,
+			ActorIP:      clientIP,
+			Action:       "login_failed",
+			ResourceType: "session",
+			ErrorMessage: "invalid password",
+			Severity:     audit.SeverityWarning,
+			Category:     audit.CategoryAuth,
+		})
 		return nil, ErrInvalidCredentials
 	}
 
@@ -97,6 +176,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*dto.L
 	activeContext := s.buildUserContext(ctx, user.ID, firstSchoolID)
 	if activeContext == nil {
 		s.logger.Error("no RBAC context found for user", "user_id", user.ID.String(), "email", user.Email)
+		recordAttempt(false)
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
 
@@ -128,6 +208,20 @@ func (s *authService) Login(ctx context.Context, email, password string) (*dto.L
 		Permissions: activeContext.Permissions,
 	}
 
+	// Record successful attempt and audit
+	recordAttempt(true)
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		ActorID:      user.ID.String(),
+		ActorEmail:   user.Email,
+		ActorRole:    activeContext.RoleName,
+		ActorIP:      clientIP,
+		Action:       "login",
+		ResourceType: "session",
+		Severity:     audit.SeverityInfo,
+		Category:     audit.CategoryAuth,
+		Metadata:     map[string]interface{}{"school_id": schoolID},
+	})
+
 	s.logger.Info("user logged in",
 		"entity_type", "auth_session",
 		"user_id", user.ID.String(),
@@ -150,8 +244,14 @@ func (s *authService) Login(ctx context.Context, email, password string) (*dto.L
 }
 
 // Logout invalidates the access token
-func (s *authService) Logout(_ context.Context, _ string) error {
+func (s *authService) Logout(ctx context.Context, _ string) error {
 	s.logger.Info("user logged out", "entity_type", "auth_session")
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "logout",
+		ResourceType: "session",
+		Severity:     audit.SeverityInfo,
+		Category:     audit.CategoryAuth,
+	})
 	return nil
 }
 
@@ -351,6 +451,17 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 	if err != nil {
 		return nil, fmt.Errorf("error generating tokens: %w", err)
 	}
+
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		ActorID:      userID,
+		ActorEmail:   user.Email,
+		ActorRole:    activeContext.RoleName,
+		Action:       "switch_context",
+		ResourceType: "session",
+		Severity:     audit.SeverityInfo,
+		Category:     audit.CategoryAuth,
+		Metadata:     map[string]interface{}{"new_school_id": targetSchoolID},
+	})
 
 	s.logger.Info("context switched",
 		"entity_type", "auth_context",
