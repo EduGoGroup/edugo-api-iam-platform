@@ -14,7 +14,7 @@ import (
 )
 
 func newRoleService(roleRepo *mockRoleRepo, permRepo *mockPermissionRepo, urRepo *mockUserRoleRepo) RoleService {
-	return NewRoleService(roleRepo, permRepo, urRepo, &mockRolePermRepo{}, &mockLogger{})
+	return NewRoleService(roleRepo, permRepo, urRepo, &mockRolePermRepo{}, &mockLogger{}, &mockAuditLogger{})
 }
 
 // ─── GetRoles ────────────────────────────────────────────────────────────────
@@ -751,7 +751,7 @@ func TestRoleService_DeleteRole(t *testing.T) {
 // ─── AssignPermission ─────────────────────────────────────────────────────────
 
 func newRoleServiceFull(roleRepo *mockRoleRepo, permRepo *mockPermissionRepo, urRepo *mockUserRoleRepo, rpRepo *mockRolePermRepo) RoleService {
-	return NewRoleService(roleRepo, permRepo, urRepo, rpRepo, &mockLogger{})
+	return NewRoleService(roleRepo, permRepo, urRepo, rpRepo, &mockLogger{}, &mockAuditLogger{})
 }
 
 func TestRoleService_AssignPermission(t *testing.T) {

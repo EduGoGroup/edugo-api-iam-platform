@@ -2,11 +2,16 @@ package container
 
 import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/service"
+	auditHandler "github.com/EduGoGroup/edugo-api-iam-platform/internal/audit/handler"
+	auditRepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/audit/repository"
+	auditService "github.com/EduGoGroup/edugo-api-iam-platform/internal/audit/service"
 	authHandler "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/handler"
+	authrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/repository"
 	authService "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/service"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/handler"
 	pgRepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/persistence/postgres/repository"
+	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedPgRepo "github.com/EduGoGroup/edugo-shared/repository"
@@ -33,6 +38,7 @@ type Container struct {
 	ScreenConfigHandler *handler.ScreenConfigHandler
 	SyncHandler         *handler.SyncHandler
 	HealthHandler       *handler.HealthHandler
+	AuditHandler        *auditHandler.AuditHandler
 }
 
 // NewContainer creates a new container and initializes all dependencies
@@ -42,6 +48,9 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 		Logger:     log,
 		JWTManager: auth.NewJWTManager(cfg.Auth.JWT.Secret, cfg.Auth.JWT.Issuer),
 	}
+
+	// Audit logger
+	auditLogger := audit.NewPostgresAuditLogger(db, "iam-platform")
 
 	// Shared Repositories (from edugo-shared/repository)
 	userRepo := sharedPgRepo.NewPostgresUserRepository(db)
@@ -58,21 +67,29 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	screenInstanceRepo := pgRepo.NewPostgresScreenInstanceRepository(db)
 	resourceScreenRepo := pgRepo.NewPostgresResourceScreenRepository(db)
 
+	// Login attempt repository
+	loginAttemptRepo := authrepo.NewPostgresLoginAttemptRepository(db)
+
 	// Auth
 	c.TokenService = authService.NewTokenService(c.JWTManager, cfg.Auth.JWT.AccessTokenDuration, cfg.Auth.JWT.RefreshTokenDuration)
-	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, c.TokenService, log)
+	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, c.TokenService, log, auditLogger, loginAttemptRepo)
 	c.AuthHandler = authHandler.NewAuthHandler(c.AuthService, log)
 	c.VerifyHandler = authHandler.NewVerifyHandler(c.TokenService)
 
 	// Services
-	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, rolePermRepo, log)
+	roleService := service.NewRoleService(roleRepo, permissionRepo, userRoleRepo, rolePermRepo, log, auditLogger)
 	resourceService := service.NewResourceService(resourceRepo, log)
 	menuService := service.NewMenuService(resourceRepo, resourceScreenRepo, log)
-	permissionService := service.NewPermissionService(permissionRepo, resourceRepo, log)
+	permissionService := service.NewPermissionService(permissionRepo, resourceRepo, log, auditLogger)
 	screenConfigService := service.NewScreenConfigService(screenTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
 
 	// Sync
 	syncService := service.NewSyncService(menuService, screenConfigService, c.AuthService, screenInstanceRepo, log)
+
+	// Audit query
+	auditRepository := auditRepo.NewPostgresAuditRepository(db)
+	auditQueryService := auditService.NewAuditQueryService(auditRepository)
+	c.AuditHandler = auditHandler.NewAuditHandler(auditQueryService)
 
 	// Handlers
 	c.RoleHandler = handler.NewRoleHandler(roleService, log)

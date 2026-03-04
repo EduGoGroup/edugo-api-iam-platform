@@ -5,10 +5,21 @@ import (
 
 	domainrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+// ─── AuditLogger mock ──────────────────────────────────────────────────────
+
+type mockAuditLogger struct{}
+
+func (m *mockAuditLogger) Log(_ context.Context, _ audit.AuditEvent) error       { return nil }
+func (m *mockAuditLogger) LogFromGin(_ *gin.Context, _, _, _ string, _ ...audit.AuditOption) error {
+	return nil
+}
 
 // ─── Logger mock ─────────────────────────────────────────────────────────────
 

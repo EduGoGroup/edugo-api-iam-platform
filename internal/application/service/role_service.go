@@ -7,6 +7,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
@@ -37,11 +38,12 @@ type roleService struct {
 	userRoleRepo   repository.UserRoleRepository
 	rolePermRepo   repository.RolePermissionRepository
 	logger         logger.Logger
+	auditLogger    audit.AuditLogger
 }
 
 // NewRoleService creates a new role service
-func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, rolePermRepo repository.RolePermissionRepository, logger logger.Logger) RoleService {
-	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, rolePermRepo: rolePermRepo, logger: logger}
+func NewRoleService(roleRepo repository.RoleRepository, permissionRepo repository.PermissionRepository, userRoleRepo repository.UserRoleRepository, rolePermRepo repository.RolePermissionRepository, logger logger.Logger, auditLogger audit.AuditLogger) RoleService {
+	return &roleService{roleRepo: roleRepo, permissionRepo: permissionRepo, userRoleRepo: userRoleRepo, rolePermRepo: rolePermRepo, logger: logger, auditLogger: auditLogger}
 }
 
 func (s *roleService) GetRoles(ctx context.Context, scope string, filters sharedrepo.ListFilters) (*dto.RolesResponse, error) {
@@ -112,6 +114,14 @@ func (s *roleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 		return nil, errors.NewDatabaseError("create role", err)
 	}
 
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "create",
+		ResourceType: "role",
+		ResourceID:   role.ID.String(),
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"role_name": role.Name, "scope": role.Scope},
+	})
 	s.logger.Info("entity created", "entity_type", "role", "entity_id", role.ID.String(), "name", role.Name)
 	return dto.ToRoleDTO(role), nil
 }
@@ -179,6 +189,14 @@ func (s *roleService) DeleteRole(ctx context.Context, id string) error {
 		return errors.NewDatabaseError("delete role", err)
 	}
 
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "delete",
+		ResourceType: "role",
+		ResourceID:   id,
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"role_name": role.Name},
+	})
 	s.logger.Info("entity deleted", "entity_type", "role", "entity_id", id)
 	return nil
 }
@@ -426,6 +444,14 @@ func (s *roleService) GrantRoleToUser(ctx context.Context, userID string, req *d
 		return nil, errors.NewDatabaseError("grant role", err)
 	}
 
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "assign",
+		ResourceType: "user_role",
+		ResourceID:   userRole.ID.String(),
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"user_id": userID, "role_id": req.RoleID, "role_name": role.Name},
+	})
 	s.logger.Info("role granted", "entity_type", "user_role", "user_id", userID, "role_id", req.RoleID, "role_name", role.Name)
 
 	d := &dto.UserRoleDTO{
@@ -460,6 +486,13 @@ func (s *roleService) RevokeRoleFromUser(ctx context.Context, userID, roleID str
 	if err := s.userRoleRepo.RevokeByUserAndRole(ctx, uid, rid, nil, nil); err != nil {
 		return errors.NewDatabaseError("revoke role", err)
 	}
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "revoke",
+		ResourceType: "user_role",
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"user_id": userID, "role_id": roleID},
+	})
 	s.logger.Info("role revoked", "entity_type", "user_role", "user_id", userID, "role_id", roleID)
 	return nil
 }

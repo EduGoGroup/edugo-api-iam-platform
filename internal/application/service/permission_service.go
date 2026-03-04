@@ -9,6 +9,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
@@ -30,11 +31,12 @@ type permissionService struct {
 	permissionRepo repository.PermissionRepository
 	resourceRepo   repository.ResourceRepository
 	logger         logger.Logger
+	auditLogger    audit.AuditLogger
 }
 
 // NewPermissionService creates a new permission service
-func NewPermissionService(permissionRepo repository.PermissionRepository, resourceRepo repository.ResourceRepository, logger logger.Logger) PermissionService {
-	return &permissionService{permissionRepo: permissionRepo, resourceRepo: resourceRepo, logger: logger}
+func NewPermissionService(permissionRepo repository.PermissionRepository, resourceRepo repository.ResourceRepository, logger logger.Logger, auditLogger audit.AuditLogger) PermissionService {
+	return &permissionService{permissionRepo: permissionRepo, resourceRepo: resourceRepo, logger: logger, auditLogger: auditLogger}
 }
 
 func (s *permissionService) ListPermissions(ctx context.Context, filters sharedrepo.ListFilters) (*dto.PermissionsResponse, error) {
@@ -121,6 +123,14 @@ func (s *permissionService) CreatePermission(ctx context.Context, req *dto.Creat
 		return nil, errors.NewDatabaseError("create permission", err)
 	}
 
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "create",
+		ResourceType: "permission",
+		ResourceID:   perm.ID.String(),
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"permission_name": perm.Name},
+	})
 	s.logger.Info("entity created", "entity_type", "permission", "entity_id", perm.ID.String(), "name", perm.Name)
 	return dto.ToPermissionDTO(perm), nil
 }
@@ -185,6 +195,14 @@ func (s *permissionService) DeletePermission(ctx context.Context, id string) err
 		return errors.NewDatabaseError("delete permission", err)
 	}
 
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		Action:       "delete",
+		ResourceType: "permission",
+		ResourceID:   id,
+		Severity:     audit.SeverityCritical,
+		Category:     audit.CategoryAdmin,
+		Metadata:     map[string]interface{}{"permission_name": perm.Name},
+	})
 	s.logger.Info("entity deleted", "entity_type", "permission", "entity_id", id)
 	return nil
 }
