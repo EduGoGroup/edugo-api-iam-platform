@@ -441,6 +441,27 @@ const docTemplate = `{
                         "description": "Comma-separated fields to search",
                         "name": "search_fields",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status (true=active, false=inactive); omit to return all",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -448,6 +469,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse"
                         }
                     },
                     "500": {
@@ -687,6 +714,21 @@ const docTemplate = `{
                         "description": "Comma-separated fields to search",
                         "name": "search_fields",
                         "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -694,6 +736,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse"
                         }
                     },
                     "500": {
@@ -895,6 +943,21 @@ const docTemplate = `{
                         "description": "Comma-separated fields to search",
                         "name": "search_fields",
                         "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -902,6 +965,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ErrorResponse"
                         }
                     },
                     "500": {
@@ -2573,6 +2642,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -2590,11 +2662,20 @@ const docTemplate = `{
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionsResponse": {
             "type": "object",
             "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
                 "permissions": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.PermissionDTO"
                     }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -2636,6 +2717,12 @@ const docTemplate = `{
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.ResourcesResponse": {
             "type": "object",
             "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
                 "resources": {
                     "type": "array",
                     "items": {
@@ -2684,11 +2771,20 @@ const docTemplate = `{
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RolesResponse": {
             "type": "object",
             "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
                 "roles": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.RoleDTO"
                     }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -2761,6 +2857,9 @@ const docTemplate = `{
                 },
                 "display_name": {
                     "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
                 },
                 "scope": {
                     "type": "string"
