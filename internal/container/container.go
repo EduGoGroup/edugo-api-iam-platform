@@ -11,7 +11,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/handler"
 	pgRepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/persistence/postgres/repository"
-	"github.com/EduGoGroup/edugo-shared/audit"
+	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedPgRepo "github.com/EduGoGroup/edugo-shared/repository"
@@ -50,7 +50,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	}
 
 	// Audit logger
-	auditLogger := audit.NewPostgresAuditLogger(db, "iam-platform")
+	auditLogger := auditpostgres.NewPostgresAuditLogger(db, "iam-platform")
 
 	// Shared Repositories (from edugo-shared/repository)
 	userRepo := sharedPgRepo.NewPostgresUserRepository(db)

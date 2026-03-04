@@ -21,7 +21,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/container"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/middleware"
-	"github.com/EduGoGroup/edugo-shared/audit"
+	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
 	"github.com/EduGoGroup/edugo-shared/common/types/enum"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	ginmiddleware "github.com/EduGoGroup/edugo-shared/middleware/gin"
@@ -118,7 +118,7 @@ func main() {
 	}
 
 	// ==================== PROTECTED ROUTES (JWT required) ====================
-	auditLogger := audit.NewPostgresAuditLogger(gormDB, "iam-platform")
+	auditLogger := auditpostgres.NewPostgresAuditLogger(gormDB, "iam-platform")
 
 	v1 := r.Group("/api/v1")
 	v1.Use(ginmiddleware.JWTAuthMiddleware(c.JWTManager))
