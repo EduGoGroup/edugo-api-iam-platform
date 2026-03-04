@@ -32,13 +32,25 @@ func NewResourceService(resourceRepo repository.ResourceRepository, logger logge
 }
 
 func (s *resourceService) ListResources(ctx context.Context, filters sharedrepo.ListFilters) (*dto.ResourcesResponse, error) {
-	resources, err := s.resourceRepo.FindAll(ctx, filters)
+	resources, total, err := s.resourceRepo.FindAll(ctx, filters)
 	if err != nil {
 		return nil, errors.NewDatabaseError("list resources", err)
 	}
+	page := filters.Page
+	if page == 0 {
+		page = 1
+	}
+	limit := filters.Limit
+	if filters.Page > 0 && filters.Limit == 0 {
+		limit = 50
+	} else if limit == 0 {
+		limit = total
+	}
 	return &dto.ResourcesResponse{
 		Resources: dto.ToResourceDTOList(resources),
-		Total:     len(resources),
+		Total:     total,
+		Page:      page,
+		Limit:     limit,
 	}, nil
 }
 

@@ -38,11 +38,26 @@ func NewPermissionService(permissionRepo repository.PermissionRepository, resour
 }
 
 func (s *permissionService) ListPermissions(ctx context.Context, filters sharedrepo.ListFilters) (*dto.PermissionsResponse, error) {
-	perms, err := s.permissionRepo.FindAll(ctx, filters)
+	perms, total, err := s.permissionRepo.FindAll(ctx, filters)
 	if err != nil {
 		return nil, errors.NewDatabaseError("list permissions", err)
 	}
-	return &dto.PermissionsResponse{Permissions: dto.ToPermissionDTOList(perms)}, nil
+	page := filters.Page
+	if page == 0 {
+		page = 1
+	}
+	limit := filters.Limit
+	if filters.Page > 0 && filters.Limit == 0 {
+		limit = 50
+	} else if limit == 0 {
+		limit = total
+	}
+	return &dto.PermissionsResponse{
+		Permissions: dto.ToPermissionDTOList(perms),
+		Total:       total,
+		Page:        page,
+		Limit:       limit,
+	}, nil
 }
 
 func (s *permissionService) GetPermission(ctx context.Context, id string) (*dto.PermissionDTO, error) {

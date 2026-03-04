@@ -27,7 +27,7 @@ func TestResourceService_ListResources(t *testing.T) {
 			{ID: uuid.New(), Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true, IsMenuVisible: true},
 		}
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return resources, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return resources, len(resources), nil },
 		}
 
 		svc := newResourceService(repo)
@@ -45,7 +45,7 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("retorna lista vacía correctamente", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return []*entities.Resource{}, nil },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return []*entities.Resource{}, 0, nil },
 		}
 		svc := newResourceService(repo)
 		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
@@ -59,7 +59,7 @@ func TestResourceService_ListResources(t *testing.T) {
 
 	t.Run("propaga error de base de datos", func(t *testing.T) {
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) { return nil, errors.New("db fail") },
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) { return nil, 0, errors.New("db fail") },
 		}
 		svc := newResourceService(repo)
 		_, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
@@ -69,9 +69,9 @@ func TestResourceService_ListResources(t *testing.T) {
 	t.Run("pasa filtros al repositorio correctamente", func(t *testing.T) {
 		var capturedFilters sharedrepo.ListFilters
 		repo := &mockResourceRepo{
-			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, error) {
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
 				capturedFilters = filters
-				return []*entities.Resource{}, nil
+				return []*entities.Resource{}, 0, nil
 			},
 		}
 		svc := newResourceService(repo)
@@ -86,6 +86,77 @@ func TestResourceService_ListResources(t *testing.T) {
 		}
 		if len(capturedFilters.SearchFields) != len(input.SearchFields) {
 			t.Errorf("SearchFields no fue pasado correctamente: %v", capturedFilters.SearchFields)
+		}
+	})
+
+	t.Run("metadatos de paginación: page y limit se propagan correctamente", func(t *testing.T) {
+		resources := []*entities.Resource{
+			{ID: uuid.New(), Key: "dashboard", DisplayName: "Dashboard", Scope: "platform", IsActive: true},
+		}
+		repo := &mockResourceRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
+				return resources, 75, nil
+			},
+		}
+		svc := newResourceService(repo)
+
+		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{Page: 2, Limit: 25})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Total != 75 {
+			t.Errorf("Total incorrecto: esperaba 75, obtuvo %d", resp.Total)
+		}
+		if resp.Page != 2 {
+			t.Errorf("Page incorrecto: esperaba 2, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 25 {
+			t.Errorf("Limit incorrecto: esperaba 25, obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: sin page ni limit usa defaults (page=1, limit=total)", func(t *testing.T) {
+		resources := []*entities.Resource{
+			{ID: uuid.New(), Key: "dashboard", DisplayName: "Dashboard", Scope: "platform", IsActive: true},
+			{ID: uuid.New(), Key: "users", DisplayName: "Users", Scope: "platform", IsActive: true},
+			{ID: uuid.New(), Key: "settings", DisplayName: "Settings", Scope: "platform", IsActive: true},
+		}
+		repo := &mockResourceRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
+				return resources, 3, nil
+			},
+		}
+		svc := newResourceService(repo)
+
+		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page default incorrecto: esperaba 1, obtuvo %d", resp.Page)
+		}
+		if resp.Limit != 3 {
+			t.Errorf("Limit default incorrecto: esperaba total(3), obtuvo %d", resp.Limit)
+		}
+	})
+
+	t.Run("metadatos de paginación: page>0 y limit=0 aplica default de 50", func(t *testing.T) {
+		repo := &mockResourceRepo{
+			findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
+				return []*entities.Resource{}, 150, nil
+			},
+		}
+		svc := newResourceService(repo)
+
+		resp, err := svc.ListResources(ctx, sharedrepo.ListFilters{Page: 1, Limit: 0})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Limit != 50 {
+			t.Errorf("Limit default esperaba 50 cuando page>0 y limit=0, obtuvo %d", resp.Limit)
+		}
+		if resp.Page != 1 {
+			t.Errorf("Page incorrecto: esperaba 1, obtuvo %d", resp.Page)
 		}
 	})
 }

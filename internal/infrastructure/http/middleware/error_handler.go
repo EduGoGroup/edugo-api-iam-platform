@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,10 +31,18 @@ func handleError(c *gin.Context, log logger.Logger, err error) {
 			"code", appErr.Code,
 			"status", appErr.StatusCode,
 		)
-		c.JSON(appErr.StatusCode, dto.ErrorResponse{
+		response := dto.ErrorResponse{
 			Error: appErr.Message,
 			Code:  string(appErr.Code),
-		})
+		}
+		if len(appErr.Fields) > 0 {
+			details := make(map[string]string, len(appErr.Fields))
+			for k, v := range appErr.Fields {
+				details[k] = fmt.Sprintf("%v", v)
+			}
+			response.Details = details
+		}
+		c.JSON(appErr.StatusCode, response)
 		return
 	}
 

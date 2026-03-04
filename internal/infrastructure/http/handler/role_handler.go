@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,10 @@ func NewRoleHandler(roleService service.RoleService, logger logger.Logger) *Role
 // @Param scope query string false "Filter by scope (e.g. platform, school)"
 // @Param search query string false "Search term (ILIKE)"
 // @Param search_fields query string false "Comma-separated fields to search"
+// @Param page query int false "Page number (1-based)" minimum(1)
+// @Param limit query int false "Items per page" minimum(1) maximum(200)
 // @Success 200 {object} dto.RolesResponse
+// @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /roles [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
@@ -50,6 +54,22 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 				filters.SearchFields = cleanFields
 			}
 		}
+	}
+	if pageStr := c.Query("page"); pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
+		if err != nil || page <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "page must be a positive integer", Code: "INVALID_REQUEST"})
+			return
+		}
+		filters.Page = page
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "limit must be a positive integer", Code: "INVALID_REQUEST"})
+			return
+		}
+		filters.Limit = limit
 	}
 	roles, err := h.roleService.GetRoles(c.Request.Context(), scope, filters)
 	if err != nil {
@@ -94,8 +114,8 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 // @Router /roles [post]
 func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req dto.CreateRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	role, err := h.roleService.CreateRole(c.Request.Context(), &req)
@@ -123,8 +143,8 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.UpdateRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	role, err := h.roleService.UpdateRole(c.Request.Context(), id, &req)
@@ -194,8 +214,8 @@ func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 func (h *RoleHandler) AssignPermission(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.AssignPermissionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	result, err := h.roleService.AssignPermission(c.Request.Context(), id, &req)
@@ -243,8 +263,8 @@ func (h *RoleHandler) RevokePermission(c *gin.Context) {
 func (h *RoleHandler) BulkReplacePermissions(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.BulkPermissionsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	result, err := h.roleService.BulkReplacePermissions(c.Request.Context(), id, &req)
@@ -291,8 +311,8 @@ func (h *RoleHandler) GetUserRoles(c *gin.Context) {
 func (h *RoleHandler) GrantRole(c *gin.Context) {
 	userID := c.Param("user_id")
 	var req dto.GrantRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "invalid request body", Code: "INVALID_REQUEST"})
+	if err := bindJSON(c, &req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	grantedBy, _ := c.Get("user_id")
