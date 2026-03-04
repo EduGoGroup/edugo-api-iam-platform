@@ -2,8 +2,8 @@ github.com/EduGoGroup/edugo-infrastructure/postgres v0.58.0 h1:zayz9TXc7Iw4ATHzg
 github.com/EduGoGroup/edugo-infrastructure/postgres v0.58.0/go.mod h1:6IJ/Od11T2tO+cJMwp3VO4+4AyfgW9357auGeiXf5go=
 github.com/EduGoGroup/edugo-shared/auth v0.52.0 h1:PAhXqFXs/+47YmgbFigv0zG7SkAlYWZLf9e2yR3F6iA=
 github.com/EduGoGroup/edugo-shared/auth v0.52.0/go.mod h1:nsrPpHwlIXnRys4iq3FX/U3lnjoVPWVl9Iem12lR+3w=
-github.com/EduGoGroup/edugo-shared/common v0.51.0 h1:SS0btWVrevCOhWri2XyHNweTXt64xxzqtxNWL1Lahyw=
-github.com/EduGoGroup/edugo-shared/common v0.51.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
+github.com/EduGoGroup/edugo-shared/common v0.52.0 h1:1bKVyiVbiVcjvfxM7t6VkkggZ+9qDnnlBEWyj7Lpk6E=
+github.com/EduGoGroup/edugo-shared/common v0.52.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1 h1:glii4TebN8g6XJQUdcg2ibR18PM5q6Uw/Gsl6PZbArw=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1/go.mod h1:S4RAQUh0bq697MiQBh9rhrvf/hSt7PbRfr0wgtZy7is=
 github.com/EduGoGroup/edugo-shared/middleware/gin v0.50.2 h1:1vQ+lTltPVgKre7OHKEQHQFPqiAwW1qpks2+2dDRsqg=
