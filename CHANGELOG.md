@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-03-06
+
+### Tipo de Release: patch
+
+- update (#23)
+- feat(iam-platform): authorization guards + audit trail + login tracking (#20) (#21)
+- skill
+- Add pagination, is_active filter, and 400 responses to docs
+
+---
+
 ## [0.10.0] - 2026-03-04
 
 ### Tipo de Release: patch
