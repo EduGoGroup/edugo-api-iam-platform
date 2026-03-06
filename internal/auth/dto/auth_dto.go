@@ -91,10 +91,11 @@ type SwitchContextResponse struct {
 
 // ContextInfo represents the current context info (school + role)
 type ContextInfo struct {
-	SchoolID string `json:"school_id"`
-	Role     string `json:"role"`
-	UserID   string `json:"user_id"`
-	Email    string `json:"email"`
+	SchoolID   string `json:"school_id"`
+	SchoolName string `json:"school_name,omitempty"`
+	Role       string `json:"role"`
+	UserID     string `json:"user_id"`
+	Email      string `json:"email"`
 }
 
 // AvailableContextsResponse represents available contexts for a user

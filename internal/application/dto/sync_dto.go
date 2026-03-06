@@ -12,6 +12,7 @@ type SyncBundleResponse struct {
 	Permissions       []string                 `json:"permissions"`
 	Screens           map[string]*ScreenBundle `json:"screens"`
 	AvailableContexts []*authDto.UserContextDTO `json:"available_contexts"`
+	Glossary          map[string]string        `json:"glossary"`
 	Hashes            map[string]string        `json:"hashes"`
 }
 

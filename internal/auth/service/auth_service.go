@@ -219,6 +219,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		RoleID:      activeContext.RoleID,
 		RoleName:    activeContext.RoleName,
 		SchoolID:    activeContext.SchoolID,
+		SchoolName:  activeContext.SchoolName,
 		Permissions: activeContext.Permissions,
 	}
 
@@ -343,6 +344,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		RoleID:      activeContext.RoleID,
 		RoleName:    activeContext.RoleName,
 		SchoolID:    activeContext.SchoolID,
+		SchoolName:  activeContext.SchoolName,
 		Permissions: activeContext.Permissions,
 	}
 
@@ -490,10 +492,11 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 		ExpiresIn:    tokenResponse.ExpiresIn,
 		TokenType:    tokenResponse.TokenType,
 		Context: &dto.ContextInfo{
-			SchoolID: targetSchoolID,
-			Role:     activeContext.RoleName,
-			UserID:   userID,
-			Email:    user.Email,
+			SchoolID:   targetSchoolID,
+			SchoolName: activeContext.SchoolName,
+			Role:       activeContext.RoleName,
+			UserID:     userID,
+			Email:      user.Email,
 		},
 	}, nil
 }
@@ -633,6 +636,10 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 
 	if schoolID != nil {
 		uc.SchoolID = schoolID.String()
+		school, err := s.schoolRepo.FindByID(ctx, *schoolID)
+		if err == nil && school != nil {
+			uc.SchoolName = school.Name
+		}
 	}
 
 	return uc

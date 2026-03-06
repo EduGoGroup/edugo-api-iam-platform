@@ -16,6 +16,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -30,6 +31,7 @@ type syncService struct {
 	screenConfigService ScreenConfigService
 	authService         authService.AuthService
 	screenInstanceRepo  repository.ScreenInstanceRepository
+	schoolConceptRepo   repository.SchoolConceptRepository
 	logger              logger.Logger
 }
 
@@ -39,6 +41,7 @@ func NewSyncService(
 	screenConfigService ScreenConfigService,
 	authSvc authService.AuthService,
 	screenInstanceRepo repository.ScreenInstanceRepository,
+	schoolConceptRepo repository.SchoolConceptRepository,
 	logger logger.Logger,
 ) SyncService {
 	return &syncService{
@@ -46,6 +49,7 @@ func NewSyncService(
 		screenConfigService: screenConfigService,
 		authService:         authSvc,
 		screenInstanceRepo:  screenInstanceRepo,
+		schoolConceptRepo:   schoolConceptRepo,
 		logger:              logger,
 	}
 }
@@ -178,6 +182,46 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 		})
 	}
 
+	// 5. Glossary
+	if loadAll || bucketSet["glossary"] {
+		g.Go(func() error {
+			if activeContext.SchoolID == "" {
+				mu.Lock()
+				bundle.Glossary = map[string]string{}
+				hashes["glossary"] = hashJSON(map[string]string{})
+				mu.Unlock()
+				return nil
+			}
+			schoolUUID, err := uuid.Parse(activeContext.SchoolID)
+			if err != nil {
+				s.logger.Warn("sync: invalid school_id for glossary", "school_id", activeContext.SchoolID, "error", err)
+				mu.Lock()
+				bundle.Glossary = map[string]string{}
+				hashes["glossary"] = hashJSON(map[string]string{})
+				mu.Unlock()
+				return nil
+			}
+			concepts, err := s.schoolConceptRepo.FindBySchoolID(gCtx, schoolUUID)
+			if err != nil {
+				s.logger.Warn("sync: failed to load glossary", "error", err)
+				mu.Lock()
+				bundle.Glossary = map[string]string{}
+				hashes["glossary"] = hashJSON(map[string]string{})
+				mu.Unlock()
+				return nil
+			}
+			glossary := make(map[string]string, len(concepts))
+			for _, c := range concepts {
+				glossary[c.TermKey] = c.TermValue
+			}
+			mu.Lock()
+			bundle.Glossary = glossary
+			hashes["glossary"] = hashJSON(glossary)
+			mu.Unlock()
+			return nil
+		})
+	}
+
 	if err := g.Wait(); err != nil {
 		return nil, fmt.Errorf("error building sync bundle: %w", err)
 	}
@@ -190,6 +234,9 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 	}
 	if bundle.AvailableContexts == nil {
 		bundle.AvailableContexts = []*authDto.UserContextDTO{}
+	}
+	if bundle.Glossary == nil {
+		bundle.Glossary = map[string]string{}
 	}
 
 	return &bundle, nil
@@ -244,6 +291,8 @@ func (s *syncService) extractBucketData(bundle *dto.SyncBundleResponse, key stri
 		return json.Marshal(bundle.Permissions)
 	case key == "available_contexts":
 		return json.Marshal(bundle.AvailableContexts)
+	case key == "glossary":
+		return json.Marshal(bundle.Glossary)
 	case strings.HasPrefix(key, "screen:"):
 		screenKey := strings.TrimPrefix(key, "screen:")
 		screen, ok := bundle.Screens[screenKey]
