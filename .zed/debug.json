@@ -19,7 +19,7 @@
     "stopOnEntry": false,
     "env": {
       "APP_ENV": "development",
-      "DATABASE_POSTGRES_HOST": "ep-green-frost-ado4abbi-pooler.c-2.us-east-1.aws.neon.tech",
+      "DATABASE_POSTGRES_HOST": "ep-green-frost-ado4abbi.c-2.us-east-1.aws.neon.tech",
       "DATABASE_POSTGRES_PORT": "5432",
       "DATABASE_POSTGRES_USER": "neondb_owner",
       "DATABASE_POSTGRES_PASSWORD": "npg_sC2u9pTVwQJI",
