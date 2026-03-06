@@ -26,3 +26,6 @@ Thumbs.db
 vendor/
 
 __debug*
+
+# Zed
+.zed/
