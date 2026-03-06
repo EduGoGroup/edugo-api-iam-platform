@@ -119,6 +119,15 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// User with this email does not exist — treat as invalid credentials.
 			recordAttempt(false)
+			_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+				ActorEmail:   email,
+				ActorIP:      clientIP,
+				Action:       "login_failed",
+				ResourceType: "session",
+				ErrorMessage: "user not found",
+				Severity:     audit.SeverityWarning,
+				Category:     audit.CategoryAuth,
+			})
 			return nil, ErrInvalidCredentials
 		}
 		// Do not record failed attempt on internal errors (DB/network) to avoid
