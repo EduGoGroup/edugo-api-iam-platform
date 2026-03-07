@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/driver/postgres"
@@ -51,25 +53,32 @@ func main() {
 	}
 
 	// 2. Connect to PostgreSQL via GORM
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s search_path=auth,iam,academic,ui_config,public",
+	// Use pgx with SimpleProtocol to disable prepared statement caching at the driver level.
+	// Neon's pooler (PgBouncer in transaction mode) does not support prepared statements,
+	// and pgx v5 caches them internally even when GORM's PrepareStmt is false.
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Database.Postgres.Host, cfg.Database.Postgres.Port, cfg.Database.Postgres.User,
 		cfg.Database.Postgres.Password, cfg.Database.Postgres.Database, cfg.Database.Postgres.SSLMode)
 
-	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: gormLogger.Default.LogMode(gormLogger.Info),
+	pgxConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		log.Fatalf("Error parsing PostgreSQL DSN: %v", err)
+	}
+	pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	pgxConfig.RuntimeParams["search_path"] = "auth,iam,academic,ui_config,public"
+
+	sqlDB := stdlib.OpenDB(*pgxConfig)
+	sqlDB.SetMaxOpenConns(cfg.Database.Postgres.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.Database.Postgres.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
+		Logger:      gormLogger.Default.LogMode(gormLogger.Info),
+		PrepareStmt: false,
 	})
 	if err != nil {
 		log.Fatalf("Error connecting to PostgreSQL via GORM: %v", err)
 	}
-
-	sqlDB, err := gormDB.DB()
-	if err != nil {
-		log.Fatalf("Error getting underlying sql.DB: %v", err)
-	}
-
-	sqlDB.SetMaxOpenConns(cfg.Database.Postgres.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(cfg.Database.Postgres.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
