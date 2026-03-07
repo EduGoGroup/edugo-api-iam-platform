@@ -219,6 +219,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		RoleID:      activeContext.RoleID,
 		RoleName:    activeContext.RoleName,
 		SchoolID:    activeContext.SchoolID,
+		SchoolName:  activeContext.SchoolName,
 		Permissions: activeContext.Permissions,
 	}
 
@@ -343,6 +344,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		RoleID:      activeContext.RoleID,
 		RoleName:    activeContext.RoleName,
 		SchoolID:    activeContext.SchoolID,
+		SchoolName:  activeContext.SchoolName,
 		Permissions: activeContext.Permissions,
 	}
 
@@ -445,6 +447,7 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 			return nil, ErrInvalidSchoolID
 		}
 		globalContext.SchoolID = targetSchoolID
+		globalContext.SchoolName = school.Name
 		activeContext = globalContext
 	} else {
 		activeContext = s.buildUserContext(ctx, userUUID, &schoolUUID)
@@ -490,10 +493,11 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 		ExpiresIn:    tokenResponse.ExpiresIn,
 		TokenType:    tokenResponse.TokenType,
 		Context: &dto.ContextInfo{
-			SchoolID: targetSchoolID,
-			Role:     activeContext.RoleName,
-			UserID:   userID,
-			Email:    user.Email,
+			SchoolID:   targetSchoolID,
+			SchoolName: activeContext.SchoolName,
+			Role:       activeContext.RoleName,
+			UserID:     userID,
+			Email:      user.Email,
 		},
 	}, nil
 }
@@ -633,6 +637,16 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 
 	if schoolID != nil {
 		uc.SchoolID = schoolID.String()
+		school, err := s.schoolRepo.FindByID(ctx, *schoolID)
+		if err != nil {
+			s.logger.Warn("error obtaining school for RBAC context",
+				"user_id", userID.String(),
+				"school_id", schoolID.String(),
+				"error", err,
+			)
+		} else if school != nil {
+			uc.SchoolName = school.Name
+		}
 	}
 
 	return uc
