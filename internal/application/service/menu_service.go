@@ -121,6 +121,11 @@ func extractResourceKeys(permissions []string) []string {
 	seen := make(map[string]bool)
 	var keys []string
 	for _, perm := range permissions {
+		// Skip :own permissions — they grant access to self-profile only,
+		// not to the resource list (e.g., users:read:own should not show "Usuarios" menu)
+		if strings.HasSuffix(perm, ":own") {
+			continue
+		}
 		parts := strings.SplitN(perm, ":", 2)
 		if len(parts) >= 2 && !seen[parts[0]] {
 			seen[parts[0]] = true

@@ -66,6 +66,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	screenTemplateRepo := pgRepo.NewPostgresScreenTemplateRepository(db)
 	screenInstanceRepo := pgRepo.NewPostgresScreenInstanceRepository(db)
 	resourceScreenRepo := pgRepo.NewPostgresResourceScreenRepository(db)
+	schoolConceptRepo := pgRepo.NewPostgresSchoolConceptRepository(db)
 
 	// Login attempt repository
 	loginAttemptRepo := authrepo.NewPostgresLoginAttemptRepository(db)
@@ -84,7 +85,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	screenConfigService := service.NewScreenConfigService(screenTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
 
 	// Sync
-	syncService := service.NewSyncService(menuService, screenConfigService, c.AuthService, screenInstanceRepo, log)
+	syncService := service.NewSyncService(menuService, screenConfigService, c.AuthService, screenInstanceRepo, schoolConceptRepo, log)
 
 	// Audit query
 	auditRepository := auditRepo.NewPostgresAuditRepository(db)

@@ -284,6 +284,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO'
         type: array
+      glossary:
+        additionalProperties:
+          type: string
+        type: object
       hashes:
         additionalProperties:
           type: string

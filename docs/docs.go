@@ -3086,6 +3086,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO"
                     }
                 },
+                "glossary": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "hashes": {
                     "type": "object",
                     "additionalProperties": {
