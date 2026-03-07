@@ -275,8 +275,7 @@ func (r *postgresUserRoleRepository) GetUserPermissions(ctx context.Context, use
 	query := `SELECT DISTINCT p.name FROM iam.permissions p
 		INNER JOIN iam.role_permissions rp ON p.id = rp.permission_id
 		INNER JOIN iam.user_roles ur ON rp.role_id = ur.role_id
-		WHERE ur.user_id = ? AND ur.is_active = true AND p.is_active = true
-		ORDER BY p.name`
+		WHERE ur.user_id = ? AND ur.is_active = true AND p.is_active = true`
 	args := []interface{}{userID}
 	if schoolID != nil {
 		query += ` AND ur.school_id = ?`
@@ -286,6 +285,7 @@ func (r *postgresUserRoleRepository) GetUserPermissions(ctx context.Context, use
 		query += ` AND ur.academic_unit_id = ?`
 		args = append(args, *unitID)
 	}
+	query += ` ORDER BY p.name`
 	var perms []string
 	err := r.db.WithContext(ctx).Raw(query, args...).Scan(&perms).Error
 	return perms, err
