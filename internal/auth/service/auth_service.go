@@ -447,6 +447,7 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 			return nil, ErrInvalidSchoolID
 		}
 		globalContext.SchoolID = targetSchoolID
+		globalContext.SchoolName = school.Name
 		activeContext = globalContext
 	} else {
 		activeContext = s.buildUserContext(ctx, userUUID, &schoolUUID)
@@ -637,7 +638,13 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 	if schoolID != nil {
 		uc.SchoolID = schoolID.String()
 		school, err := s.schoolRepo.FindByID(ctx, *schoolID)
-		if err == nil && school != nil {
+		if err != nil {
+			s.logger.Warn("error obtaining school for RBAC context",
+				"user_id", userID.String(),
+				"school_id", schoolID.String(),
+				"error", err,
+			)
+		} else if school != nil {
 			uc.SchoolName = school.Name
 		}
 	}

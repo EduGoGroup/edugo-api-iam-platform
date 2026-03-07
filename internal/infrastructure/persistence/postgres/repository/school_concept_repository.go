@@ -19,7 +19,6 @@ func (r *postgresSchoolConceptRepository) FindBySchoolID(ctx context.Context, sc
 	var concepts []*entities.SchoolConcept
 	err := r.db.WithContext(ctx).Table("academic.school_concepts").
 		Where("school_id = ?", schoolID).
-		Order("category ASC, term_key ASC").
 		Find(&concepts).Error
 	return concepts, err
 }
