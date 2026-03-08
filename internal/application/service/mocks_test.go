@@ -32,12 +32,12 @@ func (m *mockLogger) With(fields ...interface{}) logger.Logger { return m }
 // ─── RoleRepository mock ─────────────────────────────────────────────────────
 
 type mockRoleRepo struct {
-	findByIDFn          func(ctx context.Context, id uuid.UUID) (*entities.Role, error)
-	findAllFn           func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, int, error)
-	findByScopeFn       func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, int, error)
-	createFn            func(ctx context.Context, role *entities.Role) error
-	updateFn            func(ctx context.Context, role *entities.Role) error
-	softDeleteFn        func(ctx context.Context, id uuid.UUID) error
+	findByIDFn           func(ctx context.Context, id uuid.UUID) (*entities.Role, error)
+	findAllFn            func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, int, error)
+	findByScopeFn        func(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, int, error)
+	createFn             func(ctx context.Context, role *entities.Role) error
+	updateFn             func(ctx context.Context, role *entities.Role) error
+	softDeleteFn         func(ctx context.Context, id uuid.UUID) error
 	hasActiveUserRolesFn func(ctx context.Context, roleID uuid.UUID) (bool, error)
 }
 
@@ -87,12 +87,12 @@ func (m *mockRoleRepo) HasActiveUserRoles(ctx context.Context, roleID uuid.UUID)
 // ─── PermissionRepository mock ───────────────────────────────────────────────
 
 type mockPermissionRepo struct {
-	findByIDFn                func(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
-	findAllFn                 func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error)
-	findByRoleFn              func(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
-	createFn                  func(ctx context.Context, perm *entities.Permission) error
-	updateFn                  func(ctx context.Context, perm *entities.Permission) error
-	softDeleteFn              func(ctx context.Context, id uuid.UUID) error
+	findByIDFn                 func(ctx context.Context, id uuid.UUID) (*entities.Permission, error)
+	findAllFn                  func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error)
+	findByRoleFn               func(ctx context.Context, roleID uuid.UUID) ([]*entities.Permission, error)
+	createFn                   func(ctx context.Context, perm *entities.Permission) error
+	updateFn                   func(ctx context.Context, perm *entities.Permission) error
+	softDeleteFn               func(ctx context.Context, id uuid.UUID) error
 	hasActiveRolePermissionsFn func(ctx context.Context, permissionID uuid.UUID) (bool, error)
 }
 
@@ -327,31 +327,69 @@ func (m *mockScreenInstanceRepo) Delete(ctx context.Context, id uuid.UUID) error
 // ─── ResourceScreenRepository mock ───────────────────────────────────────────
 
 type mockResourceScreenRepo struct {
-	createFn           func(ctx context.Context, rs *entities.ResourceScreen) error
-	getByResourceIDFn  func(ctx context.Context, resourceID uuid.UUID) ([]*entities.ResourceScreen, error)
-	getByResourceKeyFn func(ctx context.Context, key string) ([]*entities.ResourceScreen, error)
-	deleteFn           func(ctx context.Context, id uuid.UUID) error
+	createFn            func(ctx context.Context, rs *entities.ResourceScreen) error
+	getByResourceIDFn   func(ctx context.Context, resourceID uuid.UUID) ([]*entities.ResourceScreen, error)
+	getByResourceKeyFn  func(ctx context.Context, key string) ([]*entities.ResourceScreen, error)
+	getByResourceKeysFn func(ctx context.Context, keys []string) ([]*entities.ResourceScreen, error)
+	deleteFn            func(ctx context.Context, id uuid.UUID) error
 }
 
 func (m *mockResourceScreenRepo) Create(ctx context.Context, rs *entities.ResourceScreen) error {
+	if m == nil {
+		return nil
+	}
 	if m.createFn != nil {
 		return m.createFn(ctx, rs)
 	}
 	return nil
 }
 func (m *mockResourceScreenRepo) GetByResourceID(ctx context.Context, resourceID uuid.UUID) ([]*entities.ResourceScreen, error) {
+	if m == nil {
+		return nil, nil
+	}
 	if m.getByResourceIDFn != nil {
 		return m.getByResourceIDFn(ctx, resourceID)
 	}
 	return nil, nil
 }
 func (m *mockResourceScreenRepo) GetByResourceKey(ctx context.Context, key string) ([]*entities.ResourceScreen, error) {
+	if m == nil {
+		return nil, nil
+	}
 	if m.getByResourceKeyFn != nil {
 		return m.getByResourceKeyFn(ctx, key)
 	}
 	return nil, nil
 }
+func (m *mockResourceScreenRepo) GetByResourceKeys(ctx context.Context, keys []string) ([]*entities.ResourceScreen, error) {
+	if m == nil {
+		return nil, nil
+	}
+	if m.getByResourceKeysFn != nil {
+		return m.getByResourceKeysFn(ctx, keys)
+	}
+	if m.getByResourceKeyFn != nil {
+		result := make([]*entities.ResourceScreen, 0)
+		for _, key := range keys {
+			screens, err := m.getByResourceKeyFn(ctx, key)
+			if err != nil {
+				return nil, err
+			}
+			for _, sc := range screens {
+				if sc != nil && sc.ResourceKey == "" {
+					sc.ResourceKey = key
+				}
+			}
+			result = append(result, screens...)
+		}
+		return result, nil
+	}
+	return nil, nil
+}
 func (m *mockResourceScreenRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	if m == nil {
+		return nil
+	}
 	if m.deleteFn != nil {
 		return m.deleteFn(ctx, id)
 	}

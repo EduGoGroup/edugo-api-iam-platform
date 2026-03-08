@@ -26,6 +26,7 @@ type ScreenConfigService interface {
 	UpdateInstance(ctx context.Context, id string, req *UpdateInstanceRequest) (*ScreenInstanceDTO, error)
 	DeleteInstance(ctx context.Context, id string) error
 	ResolveScreenByKey(ctx context.Context, key string) (*CombinedScreenDTO, error)
+	ResolveAllScreens(ctx context.Context) ([]*CombinedScreenDTO, error)
 	GetScreenVersion(ctx context.Context, key string) (*ScreenVersionDTO, error)
 	LinkScreenToResource(ctx context.Context, req *LinkScreenRequest) (*ResourceScreenDTO, error)
 	GetScreensForResource(ctx context.Context, resourceID string) ([]*ResourceScreenDTO, error)
@@ -414,6 +415,39 @@ func (s *screenConfigService) ResolveScreenByKey(ctx context.Context, key string
 		combined.HandlerKey = instance.HandlerKey
 	}
 	return combined, nil
+}
+
+// ResolveAllScreens fetches all screen instances and their templates in 2 queries (no N+1).
+func (s *screenConfigService) ResolveAllScreens(ctx context.Context) ([]*CombinedScreenDTO, error) {
+	instances, _, err := s.instanceRepo.List(ctx, repository.ScreenInstanceFilter{Limit: 1000})
+	if err != nil {
+		return nil, errors.NewDatabaseError("list screen instances", err)
+	}
+	templates, _, err := s.templateRepo.List(ctx, repository.ScreenTemplateFilter{Limit: 1000})
+	if err != nil {
+		return nil, errors.NewDatabaseError("list screen templates", err)
+	}
+	templateMap := make(map[uuid.UUID]*entities.ScreenTemplate, len(templates))
+	for _, t := range templates {
+		templateMap[t.ID] = t
+	}
+	result := make([]*CombinedScreenDTO, 0, len(instances))
+	for _, inst := range instances {
+		t, ok := templateMap[inst.TemplateID]
+		if !ok {
+			continue
+		}
+		combined := &CombinedScreenDTO{
+			ScreenID: inst.ID.String(), ScreenKey: inst.ScreenKey, ScreenName: inst.Name,
+			Pattern: t.Pattern, Version: t.Version, Template: t.Definition,
+			SlotData: inst.SlotData, UpdatedAt: inst.UpdatedAt,
+		}
+		if inst.HandlerKey != nil {
+			combined.HandlerKey = inst.HandlerKey
+		}
+		result = append(result, combined)
+	}
+	return result, nil
 }
 
 func (s *screenConfigService) GetScreenVersion(ctx context.Context, key string) (*ScreenVersionDTO, error) {

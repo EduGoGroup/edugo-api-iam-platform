@@ -8,6 +8,7 @@ VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DIR=bin
 COVERAGE_DIR=coverage
 MAIN_PATH=./cmd/main.go
+ENV_FILE ?= .env
 
 # Go commands
 GOCMD=go
@@ -27,9 +28,9 @@ BLUE=\033[1;34m
 RED=\033[1;31m
 RESET=\033[0m
 
-# Load .env file if it exists
-ifneq (,$(wildcard .env))
-    include .env
+# Load env file if it exists (override with: make <target> ENV_FILE=.env.local)
+ifneq (,$(wildcard $(ENV_FILE)))
+    include $(ENV_FILE)
     export
 endif
 
@@ -66,6 +67,22 @@ run: ## Ejecutar en modo desarrollo
 dev: deps run ## Desarrollo completo
 
 # ============================================
+# Environment Aliases
+# ============================================
+
+run-local: ## Ejecutar con .env.local
+	@$(MAKE) run ENV_FILE=.env.local
+
+run-cloud: ## Ejecutar con .env.cloud
+	@$(MAKE) run ENV_FILE=.env.cloud
+
+dev-local: ## Desarrollo completo con .env.local
+	@$(MAKE) dev ENV_FILE=.env.local
+
+dev-cloud: ## Desarrollo completo con .env.cloud
+	@$(MAKE) dev ENV_FILE=.env.cloud
+
+# ============================================
 # Testing
 # ============================================
 
@@ -76,10 +93,26 @@ test-unit: ## Tests unitarios
 
 test-integration: ## Tests de integracion (con testcontainers)
 	@echo "$(YELLOW)Ejecutando tests de integracion...$(RESET)"
-	@RUN_INTEGRATION_TESTS=true $(GOTEST) -v -tags=integration ./test/integration/... -timeout 10m
+	@if [ -d ./test/integration ]; then \
+		RUN_INTEGRATION_TESTS=true $(GOTEST) -v -tags=integration ./test/integration/... -timeout 10m; \
+	else \
+		echo "$(YELLOW)No se encontro ./test/integration; omitiendo tests de integracion.$(RESET)"; \
+	fi
 	@echo "$(GREEN)Tests de integracion completados$(RESET)"
 
 test-all: test-unit test-integration ## Ejecutar unitarios + integracion
+
+test-unit-local: ## Tests unitarios con .env.local
+	@$(MAKE) test-unit ENV_FILE=.env.local
+
+test-unit-cloud: ## Tests unitarios con .env.cloud
+	@$(MAKE) test-unit ENV_FILE=.env.cloud
+
+test-all-local: ## Unitarios + integracion con .env.local
+	@$(MAKE) test-all ENV_FILE=.env.local
+
+test-all-cloud: ## Unitarios + integracion con .env.cloud
+	@$(MAKE) test-all ENV_FILE=.env.cloud
 
 coverage-report: ## Reporte de cobertura
 	@echo "$(YELLOW)Generando reporte de cobertura...$(RESET)"
@@ -204,7 +237,8 @@ clean: ## Limpiar archivos generados
 	@rm -rf $(BUILD_DIR) $(COVERAGE_DIR)
 	@echo "$(GREEN)Limpieza completada$(RESET)"
 
-.PHONY: help build build-debug run dev test-unit test-integration test-all \
+.PHONY: help build build-debug run run-local run-cloud dev dev-local dev-cloud \
+        test-unit test-unit-local test-unit-cloud test-integration test-all test-all-local test-all-cloud \
         coverage-report coverage-check fmt vet lint audit deps tidy tools \
         swagger docker-build docker-up docker-down docker-logs ci \
         dev-init dev-status clean
