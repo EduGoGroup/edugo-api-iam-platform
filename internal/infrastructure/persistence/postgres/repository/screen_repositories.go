@@ -165,6 +165,16 @@ func (r *postgresResourceScreenRepository) GetByResourceKey(ctx context.Context,
 	return result, err
 }
 
+func (r *postgresResourceScreenRepository) GetByResourceKeys(ctx context.Context, keys []string) ([]*entities.ResourceScreen, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	var result []*entities.ResourceScreen
+	err := r.db.WithContext(ctx).Table("ui_config.resource_screens").
+		Where("resource_key IN ? AND is_active = true", keys).Order("sort_order").Find(&result).Error
+	return result, err
+}
+
 func (r *postgresResourceScreenRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Table("ui_config.resource_screens").Where("id = ?", id).Delete(&entities.ResourceScreen{}).Error
 }

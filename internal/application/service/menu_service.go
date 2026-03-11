@@ -103,16 +103,19 @@ func (s *menuService) loadScreenMappings(ctx context.Context, resources []*entit
 	if s.resourceScreenRepo == nil {
 		return result
 	}
+	keys := make([]string, 0, len(resources))
 	for _, r := range resources {
-		screens, err := s.resourceScreenRepo.GetByResourceKey(ctx, r.Key)
-		if err != nil || len(screens) == 0 {
-			continue
+		keys = append(keys, r.Key)
+	}
+	screens, err := s.resourceScreenRepo.GetByResourceKeys(ctx, keys)
+	if err != nil {
+		return result
+	}
+	for _, sc := range screens {
+		if result[sc.ResourceKey] == nil {
+			result[sc.ResourceKey] = make(map[string]string)
 		}
-		screenMap := make(map[string]string)
-		for _, sc := range screens {
-			screenMap[sc.ScreenType] = sc.ScreenKey
-		}
-		result[r.Key] = screenMap
+		result[sc.ResourceKey][sc.ScreenType] = sc.ScreenKey
 	}
 	return result
 }

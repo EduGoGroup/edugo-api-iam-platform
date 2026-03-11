@@ -141,25 +141,16 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 		})
 	}
 
-	// 4. Screens
+	// 4. Screens — uses ResolveAllScreens to avoid N+1 (2 queries total)
 	if loadAll || bucketSet["screens"] {
 		g.Go(func() error {
-			instances, _, err := s.screenInstanceRepo.List(gCtx, repository.ScreenInstanceFilter{
-				Offset: 0,
-				Limit:  1000,
-			})
+			allScreens, err := s.screenConfigService.ResolveAllScreens(gCtx)
 			if err != nil {
-				s.logger.Warn("sync: error listing screen instances", "user_id", userID, "error", err)
+				s.logger.Warn("sync: error resolving screens", "user_id", userID, "error", err)
 				return nil
 			}
 
-			for _, inst := range instances {
-				resolved, err := s.screenConfigService.ResolveScreenByKey(gCtx, inst.ScreenKey)
-				if err != nil {
-					s.logger.Warn("sync: error resolving screen", "key", inst.ScreenKey, "error", err)
-					continue
-				}
-
+			for _, resolved := range allScreens {
 				screenBundle := &dto.ScreenBundle{
 					ScreenKey:  resolved.ScreenKey,
 					ScreenName: resolved.ScreenName,
@@ -170,11 +161,11 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 					HandlerKey: resolved.HandlerKey,
 				}
 
-				hashKey := "screen:" + inst.ScreenKey
+				hashKey := "screen:" + resolved.ScreenKey
 				hashVal := hashScreen(resolved.Version, resolved.UpdatedAt.UTC().Format(time.RFC3339Nano))
 
 				mu.Lock()
-				screens[inst.ScreenKey] = screenBundle
+				screens[resolved.ScreenKey] = screenBundle
 				hashes[hashKey] = hashVal
 				mu.Unlock()
 			}
