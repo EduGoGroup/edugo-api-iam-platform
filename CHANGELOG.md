@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-03-11
+
+### Tipo de Release: patch
+
+- chore: update dependencies in go.mod and go.sum to latest versions
+- feat: UI review improvements — screen config, menu service, sync service updates
+- update (#27)
+- chore: bump edugo-infrastructure/postgres to v0.61.0 (#26)
+- Use pgx SimpleProtocol to fix prepared statement issues
+- feat: glossary bucket in sync bundle (#24)
+- fix: auth service and debug config improvements (#22)
+- feat(iam-platform): authorization guards + audit trail + login tracking (#20)
+
+---
+
 ## [0.13.0] - 2026-03-07
 
 ### Tipo de Release: patch
