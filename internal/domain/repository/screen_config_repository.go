@@ -40,5 +40,6 @@ type ResourceScreenRepository interface {
 	Create(ctx context.Context, rs *entities.ResourceScreen) error
 	GetByResourceID(ctx context.Context, resourceID uuid.UUID) ([]*entities.ResourceScreen, error)
 	GetByResourceKey(ctx context.Context, key string) ([]*entities.ResourceScreen, error)
+	GetByResourceKeys(ctx context.Context, keys []string) ([]*entities.ResourceScreen, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
