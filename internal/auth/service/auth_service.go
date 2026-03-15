@@ -16,7 +16,6 @@ import (
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // Sentinel errors for auth operations
@@ -116,7 +115,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// 1. Find user by email
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, sharedrepo.ErrNotFound) {
 			// User with this email does not exist — treat as invalid credentials.
 			recordAttempt(false)
 			_ = s.auditLogger.Log(ctx, audit.AuditEvent{
@@ -420,7 +419,7 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 
 	membership, err := s.membershipRepo.FindByUserAndSchool(ctx, userUUID, schoolUUID)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, sharedrepo.ErrNotFound) {
 			return nil, fmt.Errorf("error checking membership: %w", err)
 		}
 		membership = nil
