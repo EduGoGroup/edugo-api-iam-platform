@@ -1439,6 +1439,10 @@ paths:
         minimum: 1
         name: page
         type: integer
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
       - description: Items per page
         in: query
         maximum: 200

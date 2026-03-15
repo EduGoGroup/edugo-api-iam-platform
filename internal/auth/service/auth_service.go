@@ -311,16 +311,23 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	// 4. Rebuild RBAC context.
-	// For global roles (e.g. super_admin) that have school_id = NULL in user_roles,
-	// buildUserContext with a school-scoped targetSchoolID returns nil.
-	// Mirror SwitchContext: fall back to a global context and pin the schoolID manually.
-	activeContext := s.buildUserContext(ctx, userUUID, targetSchoolID)
-	if activeContext == nil && targetSchoolID != nil {
-		globalContext := s.buildUserContext(ctx, userUUID, nil)
-		if globalContext != nil {
+	// Try global context first (covers super_admin and other global roles),
+	// then fall back to school-scoped context.
+	var activeContext *auth.UserContext
+	globalContext := s.buildUserContext(ctx, userUUID, nil)
+	if globalContext != nil {
+		// User has a global role — pin the target school if available
+		if targetSchoolID != nil {
 			globalContext.SchoolID = targetSchoolID.String()
-			activeContext = globalContext
+			school, err := s.schoolRepo.FindByID(ctx, *targetSchoolID)
+			if err == nil && school != nil {
+				globalContext.SchoolName = school.Name
+			}
 		}
+		activeContext = globalContext
+	} else if targetSchoolID != nil {
+		// No global role — try school-scoped context
+		activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
 	}
 	if activeContext == nil {
 		return nil, fmt.Errorf("user has no assigned roles")
@@ -354,7 +361,8 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 // getUserSchools devuelve las escuelas activas del usuario desde memberships.
 func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]dto.SchoolInfo, *uuid.UUID) {
-	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{})
+	active := true
+	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{IsActive: &active})
 	if err != nil {
 		s.logger.Warn("error fetching memberships for user", "user_id", userID.String(), "error", err)
 		return []dto.SchoolInfo{}, nil

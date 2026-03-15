@@ -8,13 +8,15 @@ import (
 )
 
 type ScreenTemplateFilter struct {
-	Pattern string
-	Offset  int
-	Limit   int
+	Pattern  string
+	IsActive *bool
+	Offset   int
+	Limit    int
 }
 
 type ScreenInstanceFilter struct {
 	TemplateID *string
+	IsActive   *bool
 	Offset     int
 	Limit      int
 }

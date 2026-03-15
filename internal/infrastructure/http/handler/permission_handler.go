@@ -2,15 +2,13 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/service"
 	"github.com/EduGoGroup/edugo-shared/logger"
-	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
+	ginhelper "github.com/EduGoGroup/edugo-shared/middleware/gin"
 )
 
 // ensure dto import for swag annotations
@@ -41,45 +39,10 @@ func NewPermissionHandler(permissionService service.PermissionService, logger lo
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /permissions [get]
 func (h *PermissionHandler) ListPermissions(c *gin.Context) {
-	var filters sharedrepo.ListFilters
-	if search := c.Query("search"); search != "" {
-		filters.Search = search
-		if fields := c.Query("search_fields"); fields != "" {
-			rawFields := strings.Split(fields, ",")
-			cleanFields := make([]string, 0, len(rawFields))
-			for _, f := range rawFields {
-				if f = strings.TrimSpace(f); f != "" {
-					cleanFields = append(cleanFields, f)
-				}
-			}
-			if len(cleanFields) > 0 {
-				filters.SearchFields = cleanFields
-			}
-		}
-	}
-	if isActiveStr := c.Query("is_active"); isActiveStr != "" {
-		val, parseErr := strconv.ParseBool(isActiveStr)
-		if parseErr != nil {
-			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "is_active must be true or false", Code: "INVALID_REQUEST"})
-			return
-		}
-		filters.IsActive = &val
-	}
-	if pageStr := c.Query("page"); pageStr != "" {
-		page, err := strconv.Atoi(pageStr)
-		if err != nil || page <= 0 {
-			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "page must be a positive integer", Code: "INVALID_REQUEST"})
-			return
-		}
-		filters.Page = page
-	}
-	if limitStr := c.Query("limit"); limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
-		if err != nil || limit <= 0 {
-			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: "limit must be a positive integer", Code: "INVALID_REQUEST"})
-			return
-		}
-		filters.Limit = limit
+	filters, err := ginhelper.ParseListFilters(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
 	}
 	perms, err := h.permissionService.ListPermissions(c.Request.Context(), filters)
 	if err != nil {
