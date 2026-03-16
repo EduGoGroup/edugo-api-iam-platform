@@ -11,6 +11,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# Evitar ejecuciones paralelas que generen race condition al hacer push a dev
+concurrency:
+  group: sync-main-to-dev
+  cancel-in-progress: false
+
 jobs:
   sync:
     name: Create PR to sync main → dev
@@ -95,7 +100,8 @@ jobs:
           🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
           Co-Authored-By: Claude <noreply@anthropic.com>"; then
-            # Merge exitoso
+            # Merge exitoso — pull --rebase por si hubo push concurrente antes de que llegásemos aquí
+            git pull --rebase origin dev
             git push origin dev
             echo "✅ Sincronización exitosa: main → dev"
           else
