@@ -16,7 +16,6 @@ import (
 	"github.com/EduGoGroup/edugo-shared/logger"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // Sentinel errors for auth operations
@@ -116,7 +115,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// 1. Find user by email
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, sharedrepo.ErrNotFound) {
 			// User with this email does not exist — treat as invalid credentials.
 			recordAttempt(false)
 			_ = s.auditLogger.Log(ctx, audit.AuditEvent{
@@ -312,16 +311,23 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	// 4. Rebuild RBAC context.
-	// For global roles (e.g. super_admin) that have school_id = NULL in user_roles,
-	// buildUserContext with a school-scoped targetSchoolID returns nil.
-	// Mirror SwitchContext: fall back to a global context and pin the schoolID manually.
-	activeContext := s.buildUserContext(ctx, userUUID, targetSchoolID)
-	if activeContext == nil && targetSchoolID != nil {
-		globalContext := s.buildUserContext(ctx, userUUID, nil)
-		if globalContext != nil {
+	// Try global context first (covers super_admin and other global roles),
+	// then fall back to school-scoped context.
+	var activeContext *auth.UserContext
+	globalContext := s.buildUserContext(ctx, userUUID, nil)
+	if globalContext != nil {
+		// User has a global role — pin the target school if available
+		if targetSchoolID != nil {
 			globalContext.SchoolID = targetSchoolID.String()
-			activeContext = globalContext
+			school, err := s.schoolRepo.FindByID(ctx, *targetSchoolID)
+			if err == nil && school != nil {
+				globalContext.SchoolName = school.Name
+			}
 		}
+		activeContext = globalContext
+	} else if targetSchoolID != nil {
+		// No global role — try school-scoped context
+		activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
 	}
 	if activeContext == nil {
 		return nil, fmt.Errorf("user has no assigned roles")
@@ -355,7 +361,8 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 // getUserSchools devuelve las escuelas activas del usuario desde memberships.
 func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]dto.SchoolInfo, *uuid.UUID) {
-	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{})
+	active := true
+	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{IsActive: &active})
 	if err != nil {
 		s.logger.Warn("error fetching memberships for user", "user_id", userID.String(), "error", err)
 		return []dto.SchoolInfo{}, nil
@@ -420,7 +427,7 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 
 	membership, err := s.membershipRepo.FindByUserAndSchool(ctx, userUUID, schoolUUID)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, sharedrepo.ErrNotFound) {
 			return nil, fmt.Errorf("error checking membership: %w", err)
 		}
 		membership = nil

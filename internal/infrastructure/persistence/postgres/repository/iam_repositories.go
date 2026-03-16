@@ -32,37 +32,62 @@ func (r *postgresRoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*e
 }
 
 func (r *postgresRoleRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
-	var total int64
-	countQuery := r.db.WithContext(ctx).Model(&entities.Role{}).Where("is_active = true")
-	countQuery = filters.ApplySearch(countQuery)
-	if err := countQuery.Count(&total).Error; err != nil {
+	type roleWithTotal struct {
+		entities.Role
+		Total int64 `gorm:"column:_total"`
+	}
+
+	query := r.db.WithContext(ctx).Table("iam.roles").Select("*, COUNT(*) OVER() as _total")
+	query = filters.ApplyIsActive(query)
+	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
+	query = query.Order("name")
+
+	var results []roleWithTotal
+	if err := query.Find(&results).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query := r.db.WithContext(ctx).Where("is_active = true")
-	query = filters.ApplySearch(query)
-	query = filters.ApplyPagination(query)
-	var roles []*entities.Role
-	if err := query.Order("name").Find(&roles).Error; err != nil {
-		return nil, 0, err
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
+	}
+
+	roles := make([]*entities.Role, len(results))
+	for i := range results {
+		role := results[i].Role
+		roles[i] = &role
 	}
 	return roles, int(total), nil
 }
 
 func (r *postgresRoleRepository) FindByScope(ctx context.Context, scope string, filters sharedrepo.ListFilters) ([]*entities.Role, int, error) {
-	var total int64
-	countQuery := r.db.WithContext(ctx).Model(&entities.Role{}).Where("scope = ? AND is_active = true", scope)
-	countQuery = filters.ApplySearch(countQuery)
-	if err := countQuery.Count(&total).Error; err != nil {
+	type roleWithTotal struct {
+		entities.Role
+		Total int64 `gorm:"column:_total"`
+	}
+
+	query := r.db.WithContext(ctx).Table("iam.roles").Select("*, COUNT(*) OVER() as _total")
+	query = query.Where("scope = ?", scope)
+	query = filters.ApplyIsActive(query)
+	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
+	query = query.Order("name")
+
+	var results []roleWithTotal
+	if err := query.Find(&results).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query := r.db.WithContext(ctx).Where("scope = ? AND is_active = true", scope)
-	query = filters.ApplySearch(query)
-	query = filters.ApplyPagination(query)
-	var roles []*entities.Role
-	if err := query.Order("name").Find(&roles).Error; err != nil {
-		return nil, 0, err
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
+	}
+
+	roles := make([]*entities.Role, len(results))
+	for i := range results {
+		role := results[i].Role
+		roles[i] = &role
 	}
 	return roles, int(total), nil
 }
@@ -109,25 +134,31 @@ func (r *postgresPermissionRepository) FindByID(ctx context.Context, id uuid.UUI
 }
 
 func (r *postgresPermissionRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
-	var total int64
-	countQuery := r.db.WithContext(ctx).Model(&entities.Permission{})
-	if filters.IsActive != nil {
-		countQuery = countQuery.Where("is_active = ?", *filters.IsActive)
+	type permWithTotal struct {
+		entities.Permission
+		Total int64 `gorm:"column:_total"`
 	}
-	countQuery = filters.ApplySearch(countQuery)
-	if err := countQuery.Count(&total).Error; err != nil {
+
+	query := r.db.WithContext(ctx).Table("iam.permissions").Select("*, COUNT(*) OVER() as _total")
+	query = filters.ApplyIsActive(query)
+	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
+	query = query.Order("name")
+
+	var results []permWithTotal
+	if err := query.Find(&results).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query := r.db.WithContext(ctx)
-	if filters.IsActive != nil {
-		query = query.Where("is_active = ?", *filters.IsActive)
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
 	}
-	query = filters.ApplySearch(query)
-	query = filters.ApplyPagination(query)
-	var perms []*entities.Permission
-	if err := query.Order("name").Find(&perms).Error; err != nil {
-		return nil, 0, err
+
+	perms := make([]*entities.Permission, len(results))
+	for i := range results {
+		p := results[i].Permission
+		perms[i] = &p
 	}
 	return perms, int(total), nil
 }
@@ -300,19 +331,31 @@ func NewPostgresResourceRepository(db *gorm.DB) repository.ResourceRepository {
 }
 
 func (r *postgresResourceRepository) FindAll(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Resource, int, error) {
-	var total int64
-	countQuery := r.db.WithContext(ctx).Model(&entities.Resource{}).Where("is_active = true")
-	countQuery = filters.ApplySearch(countQuery)
-	if err := countQuery.Count(&total).Error; err != nil {
+	type resourceWithTotal struct {
+		entities.Resource
+		Total int64 `gorm:"column:_total"`
+	}
+
+	query := r.db.WithContext(ctx).Table("iam.resources").Select("*, COUNT(*) OVER() as _total")
+	query = query.Where("is_active = true")
+	query = filters.ApplySearch(query)
+	query = filters.ApplyPagination(query)
+	query = query.Order("sort_order")
+
+	var results []resourceWithTotal
+	if err := query.Find(&results).Error; err != nil {
 		return nil, 0, err
 	}
 
-	query := r.db.WithContext(ctx).Where("is_active = true")
-	query = filters.ApplySearch(query)
-	query = filters.ApplyPagination(query)
-	var resources []*entities.Resource
-	if err := query.Order("sort_order").Find(&resources).Error; err != nil {
-		return nil, 0, err
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
+	}
+
+	resources := make([]*entities.Resource, len(results))
+	for i := range results {
+		res := results[i].Resource
+		resources[i] = &res
 	}
 	return resources, int(total), nil
 }

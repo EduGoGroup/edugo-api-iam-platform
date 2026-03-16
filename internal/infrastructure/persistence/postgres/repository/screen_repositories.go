@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
@@ -28,7 +27,7 @@ func (r *postgresScreenTemplateRepository) GetByID(ctx context.Context, id uuid.
 	var t entities.ScreenTemplate
 	if err := r.db.WithContext(ctx).Table("ui_config.screen_templates").First(&t, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("screen template not found")
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -36,15 +35,15 @@ func (r *postgresScreenTemplateRepository) GetByID(ctx context.Context, id uuid.
 }
 
 func (r *postgresScreenTemplateRepository) List(ctx context.Context, filter repository.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
-	baseQuery := r.db.WithContext(ctx).Table("ui_config.screen_templates").Where("is_active = true")
-	if filter.Pattern != "" {
-		baseQuery = baseQuery.Where("pattern = ?", filter.Pattern)
+	type templateWithTotal struct {
+		entities.ScreenTemplate
+		Total int64 `gorm:"column:_total"`
 	}
 
-	var total int64
-	baseQuery.Count(&total)
-
-	query := r.db.WithContext(ctx).Table("ui_config.screen_templates").Where("is_active = true")
+	query := r.db.WithContext(ctx).Table("ui_config.screen_templates").Select("*, COUNT(*) OVER() as _total")
+	if filter.IsActive != nil {
+		query = query.Where("is_active = ?", *filter.IsActive)
+	}
 	if filter.Pattern != "" {
 		query = query.Where("pattern = ?", filter.Pattern)
 	}
@@ -56,9 +55,22 @@ func (r *postgresScreenTemplateRepository) List(ctx context.Context, filter repo
 		query = query.Offset(filter.Offset)
 	}
 
-	var templates []*entities.ScreenTemplate
-	err := query.Find(&templates).Error
-	return templates, int(total), err
+	var results []templateWithTotal
+	if err := query.Find(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
+	}
+
+	templates := make([]*entities.ScreenTemplate, len(results))
+	for i := range results {
+		t := results[i].ScreenTemplate
+		templates[i] = &t
+	}
+	return templates, int(total), nil
 }
 
 func (r *postgresScreenTemplateRepository) Update(ctx context.Context, t *entities.ScreenTemplate) error {
@@ -86,7 +98,7 @@ func (r *postgresScreenInstanceRepository) GetByID(ctx context.Context, id uuid.
 	var i entities.ScreenInstance
 	if err := r.db.WithContext(ctx).Table("ui_config.screen_instances").First(&i, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("screen instance not found")
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -97,7 +109,7 @@ func (r *postgresScreenInstanceRepository) GetByScreenKey(ctx context.Context, k
 	var i entities.ScreenInstance
 	if err := r.db.WithContext(ctx).Table("ui_config.screen_instances").Where("screen_key = ? AND is_active = true", key).First(&i).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("screen instance not found for key: %s", key)
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -105,15 +117,15 @@ func (r *postgresScreenInstanceRepository) GetByScreenKey(ctx context.Context, k
 }
 
 func (r *postgresScreenInstanceRepository) List(ctx context.Context, filter repository.ScreenInstanceFilter) ([]*entities.ScreenInstance, int, error) {
-	baseQuery := r.db.WithContext(ctx).Table("ui_config.screen_instances").Where("is_active = true")
-	if filter.TemplateID != nil {
-		baseQuery = baseQuery.Where("template_id = ?", *filter.TemplateID)
+	type instanceWithTotal struct {
+		entities.ScreenInstance
+		Total int64 `gorm:"column:_total"`
 	}
 
-	var total int64
-	baseQuery.Count(&total)
-
-	query := r.db.WithContext(ctx).Table("ui_config.screen_instances").Where("is_active = true")
+	query := r.db.WithContext(ctx).Table("ui_config.screen_instances").Select("*, COUNT(*) OVER() as _total")
+	if filter.IsActive != nil {
+		query = query.Where("is_active = ?", *filter.IsActive)
+	}
 	if filter.TemplateID != nil {
 		query = query.Where("template_id = ?", *filter.TemplateID)
 	}
@@ -125,9 +137,22 @@ func (r *postgresScreenInstanceRepository) List(ctx context.Context, filter repo
 		query = query.Offset(filter.Offset)
 	}
 
-	var instances []*entities.ScreenInstance
-	err := query.Find(&instances).Error
-	return instances, int(total), err
+	var results []instanceWithTotal
+	if err := query.Find(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	total := int64(0)
+	if len(results) > 0 {
+		total = results[0].Total
+	}
+
+	instances := make([]*entities.ScreenInstance, len(results))
+	for i := range results {
+		inst := results[i].ScreenInstance
+		instances[i] = &inst
+	}
+	return instances, int(total), nil
 }
 
 func (r *postgresScreenInstanceRepository) Update(ctx context.Context, i *entities.ScreenInstance) error {
