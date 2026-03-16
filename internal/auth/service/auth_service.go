@@ -276,24 +276,25 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		"school_id", schoolID,
 	)
 
-	// Record successful attempt, audit, and update last login (fire and forget).
-	// These are post-response bookkeeping — the user already has valid tokens.
-	// NOTE: recordAttempt(ctx, false) calls above remain synchronous so rate limiting works.
+	// Record successful attempt and audit log synchronously (required for rate
+	// limiting accuracy and compliance/security audit trails).
+	recordAttempt(ctx, true)
+	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
+		ActorID:      user.ID.String(),
+		ActorEmail:   user.Email,
+		ActorRole:    activeContext.RoleName,
+		ActorIP:      clientIP,
+		Action:       "login",
+		ResourceType: "session",
+		Severity:     audit.SeverityInfo,
+		Category:     audit.CategoryAuth,
+		Metadata:     map[string]interface{}{"school_id": schoolID},
+	})
+
+	// Update last-login timestamp in background (non-critical).
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		recordAttempt(bgCtx, true)
-		_ = s.auditLogger.Log(bgCtx, audit.AuditEvent{
-			ActorID:      user.ID.String(),
-			ActorEmail:   user.Email,
-			ActorRole:    activeContext.RoleName,
-			ActorIP:      clientIP,
-			Action:       "login",
-			ResourceType: "session",
-			Severity:     audit.SeverityInfo,
-			Category:     audit.CategoryAuth,
-			Metadata:     map[string]interface{}{"school_id": schoolID},
-		})
 		user.UpdatedAt = time.Now()
 		if err := s.userRepo.Update(bgCtx, user); err != nil {
 			s.logger.Warn("error updating last login", "error", err)
@@ -432,17 +433,21 @@ func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]d
 		return []dto.SchoolInfo{}, nil
 	}
 
-	// Parallel school lookups
+	// Parallel school lookups with bounded concurrency
+	const maxConcurrent = 5
 	type schoolResult struct {
 		info dto.SchoolInfo
 		ok   bool
 	}
 	results := make([]schoolResult, len(uniqueSchoolIDs))
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxConcurrent)
 	for i, sid := range uniqueSchoolIDs {
 		wg.Add(1)
 		go func(idx int, schoolID uuid.UUID) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			school, err := s.schoolRepo.FindByID(ctx, schoolID)
 			if err != nil || school == nil {
 				return
@@ -704,7 +709,12 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 		go func() {
 			defer wg.Done()
 			school, err := s.schoolRepo.FindByID(ctx, *schoolID)
-			if err == nil && school != nil {
+			if err != nil {
+				s.logger.Warn("error fetching school for RBAC context",
+					"school_id", schoolID.String(),
+					"error", err,
+				)
+			} else if school != nil {
 				schoolName = school.Name
 			}
 		}()
