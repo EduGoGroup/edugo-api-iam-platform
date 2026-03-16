@@ -9,6 +9,7 @@ import (
 	authrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/repository"
 	authService "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/service"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
+	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/cache"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/handler"
 	pgRepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/persistence/postgres/repository"
 	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
@@ -64,6 +65,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	resourceRepo := pgRepo.NewPostgresResourceRepository(db)
 	rolePermRepo := pgRepo.NewPostgresRolePermissionRepository(db)
 	screenTemplateRepo := pgRepo.NewPostgresScreenTemplateRepository(db)
+	cachedTemplateRepo := cache.NewCachedScreenTemplateRepository(screenTemplateRepo)
 	screenInstanceRepo := pgRepo.NewPostgresScreenInstanceRepository(db)
 	resourceScreenRepo := pgRepo.NewPostgresResourceScreenRepository(db)
 	schoolConceptRepo := pgRepo.NewPostgresSchoolConceptRepository(db)
@@ -82,7 +84,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	resourceService := service.NewResourceService(resourceRepo, log)
 	menuService := service.NewMenuService(resourceRepo, resourceScreenRepo, log)
 	permissionService := service.NewPermissionService(permissionRepo, resourceRepo, log, auditLogger)
-	screenConfigService := service.NewScreenConfigService(screenTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
+	screenConfigService := service.NewScreenConfigService(cachedTemplateRepo, screenInstanceRepo, resourceScreenRepo, log)
 
 	// Sync
 	syncService := service.NewSyncService(menuService, screenConfigService, c.AuthService, screenInstanceRepo, schoolConceptRepo, log)

@@ -73,7 +73,15 @@ func main() {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
-		Logger:      gormLogger.Default.LogMode(gormLogger.Info),
+		Logger: gormLogger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormLogger.Config{
+				SlowThreshold:             500 * time.Millisecond,
+				LogLevel:                  gormLogger.Info,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
 		PrepareStmt: false,
 	})
 	if err != nil {

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"regexp"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
@@ -11,6 +12,8 @@ import (
 	"github.com/EduGoGroup/edugo-shared/logger"
 	"github.com/google/uuid"
 )
+
+var screenKeyRegex = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
 
 // ScreenConfigService defines the screen configuration service interface
 type ScreenConfigService interface {
@@ -50,9 +53,10 @@ type UpdateTemplateRequest struct {
 }
 
 type TemplateFilter struct {
-	Pattern string `form:"pattern"`
-	Page    int    `form:"page"`
-	PerPage int    `form:"per_page"`
+	Pattern  string `form:"pattern"`
+	IsActive *bool  `form:"is_active"`
+	Page     int    `form:"page"`
+	PerPage  int    `form:"per_page"`
 }
 
 type CreateInstanceRequest struct {
@@ -79,6 +83,7 @@ type UpdateInstanceRequest struct {
 
 type InstanceFilter struct {
 	TemplateID string `form:"template_id"`
+	IsActive   *bool  `form:"is_active"`
 	Page       int    `form:"page"`
 	PerPage    int    `form:"per_page"`
 }
@@ -188,6 +193,9 @@ func (s *screenConfigService) GetTemplate(ctx context.Context, id string) (*Scre
 	if err != nil {
 		return nil, err
 	}
+	if template == nil {
+		return nil, errors.NewNotFoundError("screen_template")
+	}
 	return toTemplateDTO(template), nil
 }
 
@@ -199,7 +207,7 @@ func (s *screenConfigService) ListTemplates(ctx context.Context, filter Template
 		filter.Page = 1
 	}
 	offset := (filter.Page - 1) * filter.PerPage
-	repoFilter := repository.ScreenTemplateFilter{Pattern: filter.Pattern, Offset: offset, Limit: filter.PerPage}
+	repoFilter := repository.ScreenTemplateFilter{Pattern: filter.Pattern, IsActive: filter.IsActive, Offset: offset, Limit: filter.PerPage}
 	templates, total, err := s.templateRepo.List(ctx, repoFilter)
 	if err != nil {
 		return nil, 0, errors.NewDatabaseError("list screen templates", err)
@@ -219,6 +227,9 @@ func (s *screenConfigService) UpdateTemplate(ctx context.Context, id string, req
 	template, err := s.templateRepo.GetByID(ctx, tid)
 	if err != nil {
 		return nil, err
+	}
+	if template == nil {
+		return nil, errors.NewNotFoundError("screen_template")
 	}
 	if req.Pattern != nil {
 		template.Pattern = *req.Pattern
@@ -246,8 +257,12 @@ func (s *screenConfigService) DeleteTemplate(ctx context.Context, id string) err
 	if err != nil {
 		return errors.NewValidationError("invalid template ID")
 	}
-	if _, err := s.templateRepo.GetByID(ctx, tid); err != nil {
+	t, err := s.templateRepo.GetByID(ctx, tid)
+	if err != nil {
 		return err
+	}
+	if t == nil {
+		return errors.NewNotFoundError("screen_template")
 	}
 	if err := s.templateRepo.Delete(ctx, tid); err != nil {
 		return errors.NewDatabaseError("delete screen template", err)
@@ -261,8 +276,13 @@ func (s *screenConfigService) CreateInstance(ctx context.Context, req *CreateIns
 	if err != nil {
 		return nil, errors.NewValidationError("invalid template_id")
 	}
-	if _, err := s.templateRepo.GetByID(ctx, templateID); err != nil {
+	tmpl, err := s.templateRepo.GetByID(ctx, templateID)
+	if err != nil || tmpl == nil {
 		return nil, errors.NewValidationError("template not found")
+	}
+
+	if !screenKeyRegex.MatchString(req.ScreenKey) {
+		return nil, errors.NewValidationError("screen_key must be kebab-case (e.g., 'my-screen-list')")
 	}
 
 	now := time.Now()
@@ -303,6 +323,9 @@ func (s *screenConfigService) GetInstance(ctx context.Context, id string) (*Scre
 	if err != nil {
 		return nil, err
 	}
+	if instance == nil {
+		return nil, errors.NewNotFoundError("screen_instance")
+	}
 	return toInstanceDTO(instance), nil
 }
 
@@ -310,6 +333,9 @@ func (s *screenConfigService) GetInstanceByKey(ctx context.Context, key string) 
 	instance, err := s.instanceRepo.GetByScreenKey(ctx, key)
 	if err != nil {
 		return nil, err
+	}
+	if instance == nil {
+		return nil, errors.NewNotFoundError("screen_instance")
 	}
 	return toInstanceDTO(instance), nil
 }
@@ -322,7 +348,7 @@ func (s *screenConfigService) ListInstances(ctx context.Context, filter Instance
 		filter.Page = 1
 	}
 	offset := (filter.Page - 1) * filter.PerPage
-	repoFilter := repository.ScreenInstanceFilter{Offset: offset, Limit: filter.PerPage}
+	repoFilter := repository.ScreenInstanceFilter{Offset: offset, Limit: filter.PerPage, IsActive: filter.IsActive}
 	if filter.TemplateID != "" {
 		repoFilter.TemplateID = &filter.TemplateID
 	}
@@ -346,7 +372,13 @@ func (s *screenConfigService) UpdateInstance(ctx context.Context, id string, req
 	if err != nil {
 		return nil, err
 	}
+	if instance == nil {
+		return nil, errors.NewNotFoundError("screen_instance")
+	}
 	if req.ScreenKey != nil {
+		if !screenKeyRegex.MatchString(*req.ScreenKey) {
+			return nil, errors.NewValidationError("screen_key must be kebab-case (e.g., 'my-screen-list')")
+		}
 		instance.ScreenKey = *req.ScreenKey
 	}
 	if req.TemplateID != nil {
@@ -387,8 +419,12 @@ func (s *screenConfigService) DeleteInstance(ctx context.Context, id string) err
 	if err != nil {
 		return errors.NewValidationError("invalid instance ID")
 	}
-	if _, err := s.instanceRepo.GetByID(ctx, iid); err != nil {
+	inst, err := s.instanceRepo.GetByID(ctx, iid)
+	if err != nil {
 		return err
+	}
+	if inst == nil {
+		return errors.NewNotFoundError("screen_instance")
 	}
 	if err := s.instanceRepo.Delete(ctx, iid); err != nil {
 		return errors.NewDatabaseError("delete screen instance", err)
@@ -402,9 +438,15 @@ func (s *screenConfigService) ResolveScreenByKey(ctx context.Context, key string
 	if err != nil {
 		return nil, err
 	}
+	if instance == nil {
+		return nil, errors.NewNotFoundError("screen_instance")
+	}
 	template, err := s.templateRepo.GetByID(ctx, instance.TemplateID)
 	if err != nil {
 		return nil, errors.NewDatabaseError("get template for screen instance", err)
+	}
+	if template == nil {
+		return nil, errors.NewNotFoundError("screen_template")
 	}
 	combined := &CombinedScreenDTO{
 		ScreenID: instance.ID.String(), ScreenKey: instance.ScreenKey, ScreenName: instance.Name,
@@ -455,9 +497,15 @@ func (s *screenConfigService) GetScreenVersion(ctx context.Context, key string) 
 	if err != nil {
 		return nil, err
 	}
+	if instance == nil {
+		return nil, errors.NewNotFoundError("screen_instance")
+	}
 	template, err := s.templateRepo.GetByID(ctx, instance.TemplateID)
 	if err != nil {
 		return nil, errors.NewDatabaseError("get template for screen version", err)
+	}
+	if template == nil {
+		return nil, errors.NewNotFoundError("screen_template")
 	}
 	return &ScreenVersionDTO{
 		Version:   template.Version,
