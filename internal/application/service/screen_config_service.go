@@ -276,7 +276,8 @@ func (s *screenConfigService) CreateInstance(ctx context.Context, req *CreateIns
 	if err != nil {
 		return nil, errors.NewValidationError("invalid template_id")
 	}
-	if _, err := s.templateRepo.GetByID(ctx, templateID); err != nil {
+	tmpl, err := s.templateRepo.GetByID(ctx, templateID)
+	if err != nil || tmpl == nil {
 		return nil, errors.NewValidationError("template not found")
 	}
 

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
@@ -31,7 +32,7 @@ func (r *CachedScreenTemplateRepository) Create(ctx context.Context, t *entities
 
 func (r *CachedScreenTemplateRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.ScreenTemplate, error) {
 	if cached, ok := r.cache.Load(id); ok {
-		return cached.(*entities.ScreenTemplate), nil
+		return copyTemplate(cached.(*entities.ScreenTemplate)), nil
 	}
 	t, err := r.inner.GetByID(ctx, id)
 	if err != nil {
@@ -39,8 +40,21 @@ func (r *CachedScreenTemplateRepository) GetByID(ctx context.Context, id uuid.UU
 	}
 	if t != nil {
 		r.cache.Store(id, t)
+		return copyTemplate(t), nil
 	}
-	return t, nil
+	return nil, nil
+}
+
+// copyTemplate returns a shallow copy of the ScreenTemplate so that callers
+// cannot mutate the cached instance. The Definition slice is also copied to
+// prevent shared underlying-array mutations.
+func copyTemplate(t *entities.ScreenTemplate) *entities.ScreenTemplate {
+	cp := *t
+	if t.Definition != nil {
+		cp.Definition = make(json.RawMessage, len(t.Definition))
+		copy(cp.Definition, t.Definition)
+	}
+	return &cp
 }
 
 func (r *CachedScreenTemplateRepository) List(ctx context.Context, filter repository.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
