@@ -27,6 +27,7 @@ env:
   CONTAINER_APP_NAME: edugo-api-iam-platform
   CONTAINER_APP_ENV: cae-edugo-dev
   RESOURCE_GROUP: rg-edugo-dev
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ─────────────────────────────────────────────────────────────
