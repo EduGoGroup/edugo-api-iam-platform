@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/model"
 	authrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/repository"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
+	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
@@ -80,18 +82,10 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// Normalize email to prevent case/whitespace bypass on rate limiting
 	email = strings.ToLower(strings.TrimSpace(email))
 
-	// 0. Rate limiting: check failed attempts in last 15 minutes
-	failedCount, err := s.loginAttemptRepo.CountFailedSince(ctx, email, time.Now().Add(-15*time.Minute))
-	if err != nil {
-		s.logger.Warn("error checking login rate limit", "email", email, "error", err)
-	}
-	if failedCount >= 5 {
-		s.logger.Warn("login rate limited", "email", email, "failed_count", failedCount)
-		return nil, ErrTooManyLoginAttempts
-	}
-
-	// Helper to record login attempt
-	recordAttempt := func(success bool) {
+	// Helper to record login attempt. Accepts explicit context so callers in
+	// background goroutines can pass context.Background() instead of the
+	// already-canceled request context.
+	recordAttempt := func(c context.Context, success bool) {
 		var ua, ip *string
 		if userAgent != "" {
 			ua = &userAgent
@@ -107,17 +101,43 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			IPAddress:   ip,
 			AttemptedAt: time.Now(),
 		}
-		if err := s.loginAttemptRepo.Create(ctx, attempt); err != nil {
+		if err := s.loginAttemptRepo.Create(c, attempt); err != nil {
 			s.logger.Warn("error recording login attempt", "email", email, "error", err)
 		}
 	}
 
-	// 1. Find user by email
+	// Phase 1: Rate limit check runs in background while we look up the user.
+	// Both are independent DB queries — overlap them.
+	var failedCount int
+	var rateLimitErr error
+	var phase1 sync.WaitGroup
+	phase1.Add(1)
+	go func() {
+		defer phase1.Done()
+		fc, err := s.loginAttemptRepo.CountFailedSince(ctx, email, time.Now().Add(-15*time.Minute))
+		failedCount = int(fc)
+		rateLimitErr = err
+	}()
+
+	// 1. Find user by email (runs concurrently with rate limit check)
 	user, err := s.userRepo.FindByEmail(ctx, email)
+
+	// Wait for rate limit check to complete
+	phase1.Wait()
+
+	// Check rate limit
+	if rateLimitErr != nil {
+		s.logger.Warn("error checking login rate limit", "email", email, "error", rateLimitErr)
+	}
+	if failedCount >= 5 {
+		s.logger.Warn("login rate limited", "email", email, "failed_count", failedCount)
+		return nil, ErrTooManyLoginAttempts
+	}
+
+	// Check user lookup result
 	if err != nil {
 		if errors.Is(err, sharedrepo.ErrNotFound) {
-			// User with this email does not exist — treat as invalid credentials.
-			recordAttempt(false)
+			recordAttempt(ctx, false)
 			_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 				ActorEmail:   email,
 				ActorIP:      clientIP,
@@ -129,13 +149,11 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			})
 			return nil, ErrInvalidCredentials
 		}
-		// Do not record failed attempt on internal errors (DB/network) to avoid
-		// incorrectly locking out legitimate users during outages.
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {
 		s.logger.Warn("login attempt with non-existent email", "email", email)
-		recordAttempt(false)
+		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorEmail:   email,
 			ActorIP:      clientIP,
@@ -151,7 +169,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// 2. Verify user is active
 	if !user.IsActive {
 		s.logger.Warn("login attempt with inactive user", "email", email, "user_id", user.ID.String())
-		recordAttempt(false)
+		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorID:      user.ID.String(),
 			ActorEmail:   email,
@@ -168,7 +186,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	// 3. Verify password
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		s.logger.Warn("incorrect password", "email", email)
-		recordAttempt(false)
+		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorID:      user.ID.String(),
 			ActorEmail:   email,
@@ -182,14 +200,42 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		return nil, ErrInvalidCredentials
 	}
 
-	// 4. Get user's active schools from memberships
-	schools, firstSchoolID := s.getUserSchools(ctx, user.ID)
+	// 4+5. Get schools + build RBAC context in PARALLEL.
+	// Try global role first (superadmin). If found, skip school-scoped lookup.
+	var schools []dto.SchoolInfo
+	var firstSchoolID *uuid.UUID
+	var globalContext *auth.UserContext
+	var phase2 sync.WaitGroup
+	phase2.Add(2)
+	go func() {
+		defer phase2.Done()
+		schools, firstSchoolID = s.getUserSchools(ctx, user.ID)
+	}()
+	go func() {
+		defer phase2.Done()
+		globalContext = s.buildUserContext(ctx, user.ID, nil)
+	}()
+	phase2.Wait()
 
-	// 5. Build RBAC context using the first active school
-	activeContext := s.buildUserContext(ctx, user.ID, firstSchoolID)
+	var activeContext *auth.UserContext
+	if globalContext != nil {
+		// User has a global role (e.g. super_admin) — pin school if available
+		if firstSchoolID != nil {
+			globalContext.SchoolID = firstSchoolID.String()
+			school, err := s.schoolRepo.FindByID(ctx, *firstSchoolID)
+			if err == nil && school != nil {
+				globalContext.SchoolName = school.Name
+			}
+		}
+		activeContext = globalContext
+	} else if firstSchoolID != nil {
+		// No global role — build school-scoped context
+		activeContext = s.buildUserContext(ctx, user.ID, firstSchoolID)
+	}
+
 	if activeContext == nil {
 		s.logger.Error("no RBAC context found for user", "user_id", user.ID.String(), "email", user.Email)
-		recordAttempt(false)
+		recordAttempt(ctx, false)
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
 
@@ -222,8 +268,17 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		Permissions: activeContext.Permissions,
 	}
 
-	// Record successful attempt and audit
-	recordAttempt(true)
+	s.logger.Info("user logged in",
+		"entity_type", "auth_session",
+		"user_id", user.ID.String(),
+		"email", user.Email,
+		"role", activeContext.RoleName,
+		"school_id", schoolID,
+	)
+
+	// Record successful attempt and audit log synchronously (required for rate
+	// limiting accuracy and compliance/security audit trails).
+	recordAttempt(ctx, true)
 	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 		ActorID:      user.ID.String(),
 		ActorEmail:   user.Email,
@@ -236,17 +291,9 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		Metadata:     map[string]interface{}{"school_id": schoolID},
 	})
 
-	s.logger.Info("user logged in",
-		"entity_type", "auth_session",
-		"user_id", user.ID.String(),
-		"email", user.Email,
-		"role", activeContext.RoleName,
-		"school_id", schoolID,
-	)
-
-	// 8. Update last login (fire and forget)
+	// Update last-login timestamp in background (non-critical).
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		user.UpdatedAt = time.Now()
 		if err := s.userRepo.Update(bgCtx, user); err != nil {
@@ -360,6 +407,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 }
 
 // getUserSchools devuelve las escuelas activas del usuario desde memberships.
+// School lookups run in parallel using goroutines.
 func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]dto.SchoolInfo, *uuid.UUID) {
 	active := true
 	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{IsActive: &active})
@@ -368,34 +416,61 @@ func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]d
 		return []dto.SchoolInfo{}, nil
 	}
 
+	// Deduplicate school IDs
 	seen := make(map[uuid.UUID]struct{})
-	var schools []dto.SchoolInfo
-	var firstSchoolID *uuid.UUID
-
+	var uniqueSchoolIDs []uuid.UUID
 	for _, m := range memberships {
 		if !m.IsActive {
 			continue
 		}
-		if _, exists := seen[m.SchoolID]; exists {
-			continue
+		if _, exists := seen[m.SchoolID]; !exists {
+			seen[m.SchoolID] = struct{}{}
+			uniqueSchoolIDs = append(uniqueSchoolIDs, m.SchoolID)
 		}
-		seen[m.SchoolID] = struct{}{}
-
-		school, err := s.schoolRepo.FindByID(ctx, m.SchoolID)
-		if err != nil || school == nil {
-			continue
-		}
-
-		sid := m.SchoolID
-		if firstSchoolID == nil {
-			firstSchoolID = &sid
-		}
-		schools = append(schools, dto.SchoolInfo{
-			ID:   m.SchoolID.String(),
-			Name: school.Name,
-		})
 	}
 
+	if len(uniqueSchoolIDs) == 0 {
+		return []dto.SchoolInfo{}, nil
+	}
+
+	// Parallel school lookups with bounded concurrency
+	const maxConcurrent = 5
+	type schoolResult struct {
+		info dto.SchoolInfo
+		ok   bool
+	}
+	results := make([]schoolResult, len(uniqueSchoolIDs))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxConcurrent)
+	for i, sid := range uniqueSchoolIDs {
+		wg.Add(1)
+		go func(idx int, schoolID uuid.UUID) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			school, err := s.schoolRepo.FindByID(ctx, schoolID)
+			if err != nil || school == nil {
+				return
+			}
+			results[idx] = schoolResult{
+				info: dto.SchoolInfo{ID: schoolID.String(), Name: school.Name},
+				ok:   true,
+			}
+		}(i, sid)
+	}
+	wg.Wait()
+
+	var schools []dto.SchoolInfo
+	var firstSchoolID *uuid.UUID
+	for i, r := range results {
+		if r.ok {
+			schools = append(schools, r.info)
+			if firstSchoolID == nil {
+				sid := uniqueSchoolIDs[i]
+				firstSchoolID = &sid
+			}
+		}
+	}
 	if schools == nil {
 		schools = []dto.SchoolInfo{}
 	}
@@ -602,13 +677,55 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 	}, nil
 }
 
-// buildUserContext constructs the RBAC UserContext for the JWT
+// buildUserContext constructs the RBAC UserContext for the JWT.
+// Queries that only depend on userID+schoolID run in parallel.
 func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, schoolID *uuid.UUID) *auth.UserContext {
-	userRoles, err := s.userRoleRepo.FindByUserInContext(ctx, userID, schoolID, nil)
-	if err != nil {
+	// Phase A: These 3 queries are independent — run in parallel.
+	// - FindByUserInContext: needs userID + schoolID
+	// - GetUserPermissions: needs userID + schoolID (independent from user_roles)
+	// - FindByID(school): needs schoolID only
+	var userRoles []*entities.UserRole
+	var userRolesErr error
+	var permissions []string
+	var permErr error
+	var schoolName string
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		userRoles, userRolesErr = s.userRoleRepo.FindByUserInContext(ctx, userID, schoolID, nil)
+	}()
+	go func() {
+		defer wg.Done()
+		p, err := s.userRoleRepo.GetUserPermissions(ctx, userID, schoolID, nil)
+		permissions = p
+		permErr = err
+	}()
+
+	if schoolID != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			school, err := s.schoolRepo.FindByID(ctx, *schoolID)
+			if err != nil {
+				s.logger.Warn("error fetching school for RBAC context",
+					"school_id", schoolID.String(),
+					"error", err,
+				)
+			} else if school != nil {
+				schoolName = school.Name
+			}
+		}()
+	}
+	wg.Wait()
+
+	// Check user_roles result
+	if userRolesErr != nil {
 		s.logger.Warn("error obtaining user roles for RBAC context",
 			"user_id", userID.String(),
-			"error", err,
+			"error", userRolesErr,
 		)
 		return nil
 	}
@@ -616,6 +733,7 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 		return nil
 	}
 
+	// Phase B: Get role details (depends on FindByUserInContext result)
 	firstRole := userRoles[0]
 	role, err := s.roleRepo.FindByID(ctx, firstRole.RoleID)
 	if err != nil {
@@ -627,11 +745,10 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 		return nil
 	}
 
-	permissions, err := s.userRoleRepo.GetUserPermissions(ctx, userID, schoolID, nil)
-	if err != nil {
+	if permErr != nil {
 		s.logger.Warn("error obtaining user permissions",
 			"user_id", userID.String(),
-			"error", err,
+			"error", permErr,
 		)
 		permissions = []string{}
 	}
@@ -644,16 +761,7 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 
 	if schoolID != nil {
 		uc.SchoolID = schoolID.String()
-		school, err := s.schoolRepo.FindByID(ctx, *schoolID)
-		if err != nil {
-			s.logger.Warn("error obtaining school for RBAC context",
-				"user_id", userID.String(),
-				"school_id", schoolID.String(),
-				"error", err,
-			)
-		} else if school != nil {
-			uc.SchoolName = school.Name
-		}
+		uc.SchoolName = schoolName
 	}
 
 	return uc
