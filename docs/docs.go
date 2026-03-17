@@ -82,6 +82,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Search across actor_email, action and resource_type",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "From date (RFC3339)",
                         "name": "from",
                         "in": "query"

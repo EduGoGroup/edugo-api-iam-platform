@@ -712,6 +712,10 @@ paths:
         in: query
         name: service_name
         type: string
+      - description: Search across actor_email, action and resource_type
+        in: query
+        name: search
+        type: string
       - description: From date (RFC3339)
         in: query
         name: from
