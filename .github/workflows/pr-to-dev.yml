@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   GO_VERSION: "1.25"
   COVERAGE_THRESHOLD: 33
 
@@ -65,20 +66,28 @@ jobs:
 
     steps:
       - name: Generate summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const unitTests = '${{ needs.unit-tests.result }}';
             const lint = '${{ needs.lint.result }}';
 
+            const statusEmoji = (status) => {
+              switch(status) {
+                case 'success': return 'pass';
+                case 'failure': return 'fail';
+                default: return 'skip';
+              }
+            };
+
             const summary = `## PR to Dev - Check Summary
 
             | Check | Status |
             |-------|--------|
-            | Unit Tests | ${unitTests} |
-            | Lint & Format | ${lint} |
+            | Unit Tests | ${statusEmoji(unitTests)} ${unitTests} |
+            | Lint & Format | ${statusEmoji(lint)} ${lint} |
 
-            ${unitTests === 'success' && lint === 'success' ? 'All checks passed' : 'Some checks failed'}
+            ${unitTests === 'success' && lint === 'success' ? 'All checks passed - PR ready for review' : 'Some checks failed - Please review'}
             `;
 
             github.rest.issues.createComment({

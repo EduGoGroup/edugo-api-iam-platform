@@ -16,6 +16,9 @@ concurrency:
   group: sync-main-to-dev
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   sync:
     name: Create PR to sync main → dev
@@ -86,35 +89,53 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Checkout dev y actualizar primero (minimizar conflictos)
-          git checkout dev
-          git pull origin dev
-
           echo "🔄 Intentando merge de main a dev..."
 
-          # Intentar merge
-          if git merge origin/main --no-ff -m "chore: sync main v$VERSION to dev
+          MAX_RETRIES=3
+          PUSH_SUCCESS=false
+
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "📍 Intento $attempt/$MAX_RETRIES"
+
+            # Siempre partir del dev más reciente para evitar race conditions
+            git fetch origin dev
+            git checkout dev
+            git reset --hard origin/dev
+
+            # Intentar merge
+            if git merge origin/main --no-ff -m "chore: sync main v$VERSION to dev
 
           Sincronización automática de main a dev después de cambios en main.
 
           🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
           Co-Authored-By: Claude <noreply@anthropic.com>"; then
-            # Merge exitoso — pull --rebase por si hubo push concurrente antes de que llegásemos aquí
-            git pull --rebase origin dev
-            git push origin dev
-            echo "✅ Sincronización exitosa: main → dev"
-          else
-            # Merge falló (conflictos)
-            echo "❌ ERROR: Conflictos detectados en merge main → dev"
-            echo "::error::Conflictos requieren resolución manual"
-            echo "::error::Archivos en conflicto:"
-            git status --short
-            git merge --abort
+              # Merge exitoso, intentar push
+              if git push origin dev; then
+                PUSH_SUCCESS=true
+                echo "✅ Sincronización exitosa: main → dev"
+                break
+              else
+                echo "⚠️  Push falló (actualización concurrente), reintentando..."
+              fi
+            else
+              # Merge falló (conflictos)
+              echo "❌ ERROR: Conflictos detectados en merge main → dev"
+              echo "::error::Conflictos requieren resolución manual"
+              echo "::error::Archivos en conflicto:"
+              git status --short
+              git merge --abort
+              exit 1
+            fi
+          done
+
+          if [ "$PUSH_SUCCESS" != "true" ]; then
+            echo "❌ No se pudo pushear después de $MAX_RETRIES intentos"
             exit 1
           fi
 
       - name: Resumen
+        if: always()
         run: |
           echo "# 🔄 Sincronización Main → Dev" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
