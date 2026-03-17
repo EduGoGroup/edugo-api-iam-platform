@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	domainrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	sharedErrors "github.com/EduGoGroup/edugo-shared/common/errors"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -136,9 +136,9 @@ func TestScreenConfigService_ListTemplates(t *testing.T) {
 			{ID: uuid.New(), Pattern: "list", Name: "List", Version: 1, IsActive: true, Definition: sampleDefinition()},
 			{ID: uuid.New(), Pattern: "detail", Name: "Detail", Version: 1, IsActive: true, Definition: sampleDefinition()},
 		}
-		var capturedFilter domainrepo.ScreenTemplateFilter
+		var capturedFilter sharedrepo.ListFilters
 		tplRepo := &mockScreenTemplateRepo{
-			listFn: func(ctx context.Context, f domainrepo.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
+			listFn: func(ctx context.Context, f sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error) {
 				capturedFilter = f
 				return templates, 10, nil
 			},
@@ -155,21 +155,21 @@ func TestScreenConfigService_ListTemplates(t *testing.T) {
 		if len(dtos) != 2 {
 			t.Errorf("esperaba 2 DTOs, obtuvo %d", len(dtos))
 		}
-		if capturedFilter.Offset != 5 {
-			t.Errorf("offset incorrecto: %d (esperaba 5 para page=2, per_page=5)", capturedFilter.Offset)
+		if capturedFilter.GetOffset() != 5 {
+			t.Errorf("offset incorrecto: %d (esperaba 5 para page=2, per_page=5)", capturedFilter.GetOffset())
 		}
 		if capturedFilter.Limit != 5 {
 			t.Errorf("limit incorrecto: %d", capturedFilter.Limit)
 		}
-		if capturedFilter.Pattern != "list" {
-			t.Errorf("pattern incorrecto: %s", capturedFilter.Pattern)
+		if vals, ok := capturedFilter.FieldFilters["pattern"]; !ok || len(vals) == 0 || vals[0] != "list" {
+			t.Errorf("pattern incorrecto en FieldFilters: %v", capturedFilter.FieldFilters)
 		}
 	})
 
 	t.Run("aplica valores por defecto cuando page y per_page son 0", func(t *testing.T) {
-		var capturedFilter domainrepo.ScreenTemplateFilter
+		var capturedFilter sharedrepo.ListFilters
 		tplRepo := &mockScreenTemplateRepo{
-			listFn: func(ctx context.Context, f domainrepo.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
+			listFn: func(ctx context.Context, f sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error) {
 				capturedFilter = f
 				return nil, 0, nil
 			},
@@ -182,8 +182,8 @@ func TestScreenConfigService_ListTemplates(t *testing.T) {
 		if capturedFilter.Limit != 20 {
 			t.Errorf("limit por defecto incorrecto: %d", capturedFilter.Limit)
 		}
-		if capturedFilter.Offset != 0 {
-			t.Errorf("offset por defecto incorrecto: %d", capturedFilter.Offset)
+		if capturedFilter.GetOffset() != 0 {
+			t.Errorf("offset por defecto incorrecto: %d", capturedFilter.GetOffset())
 		}
 	})
 }

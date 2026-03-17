@@ -28,7 +28,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 			{ID: uuid.New(), Name: "teacher", DisplayName: "Teacher", Scope: "school", IsActive: true},
 		}
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return roles, len(roles), nil },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return roles, len(roles), nil
+			},
 		}
 
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
@@ -68,7 +70,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 
 	t.Run("propaga error de base de datos en FindAll", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return nil, 0, errors.New("db error") },
+			findAllFn: func(ctx context.Context, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return nil, 0, errors.New("db error")
+			},
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
@@ -78,7 +82,9 @@ func TestRoleService_GetRoles(t *testing.T) {
 
 	t.Run("propaga error de base de datos en FindByScope", func(t *testing.T) {
 		roleRepo := &mockRoleRepo{
-			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) { return nil, 0, errors.New("db error") },
+			findByScopeFn: func(ctx context.Context, scope string, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
+				return nil, 0, errors.New("db error")
+			},
 		}
 		svc := newRoleService(roleRepo, &mockPermissionRepo{}, &mockUserRoleRepo{})
 
