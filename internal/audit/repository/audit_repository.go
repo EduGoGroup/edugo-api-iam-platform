@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/audit/model"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +55,14 @@ func (r *postgresAuditRepository) List(ctx context.Context, filters model.AuditF
 	}
 	if filters.To != nil {
 		query = query.Where("created_at <= ?", *filters.To)
+	}
+	if filters.Search != "" {
+		searchFields := filters.SearchFields
+		if len(searchFields) == 0 {
+			searchFields = []string{"actor_email", "action", "resource_type"}
+		}
+		searchFilter := sharedrepo.ListFilters{Search: filters.Search, SearchFields: searchFields}
+		query = searchFilter.ApplySearch(query)
 	}
 
 	var total int64

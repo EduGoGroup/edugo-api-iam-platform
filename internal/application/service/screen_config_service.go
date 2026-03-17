@@ -10,6 +10,7 @@ import (
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/common/errors"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -54,6 +55,7 @@ type UpdateTemplateRequest struct {
 
 type TemplateFilter struct {
 	Pattern  string `form:"pattern"`
+	Search   string `form:"search"`
 	IsActive *bool  `form:"is_active"`
 	Page     int    `form:"page"`
 	PerPage  int    `form:"per_page"`
@@ -83,6 +85,7 @@ type UpdateInstanceRequest struct {
 
 type InstanceFilter struct {
 	TemplateID string `form:"template_id"`
+	Search     string `form:"search"`
 	IsActive   *bool  `form:"is_active"`
 	Page       int    `form:"page"`
 	PerPage    int    `form:"per_page"`
@@ -206,8 +209,16 @@ func (s *screenConfigService) ListTemplates(ctx context.Context, filter Template
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
-	offset := (filter.Page - 1) * filter.PerPage
-	repoFilter := repository.ScreenTemplateFilter{Pattern: filter.Pattern, IsActive: filter.IsActive, Offset: offset, Limit: filter.PerPage}
+	repoFilter := sharedrepo.ListFilters{
+		IsActive:     filter.IsActive,
+		Page:         filter.Page,
+		Limit:        filter.PerPage,
+		Search:       filter.Search,
+		SearchFields: []string{"name", "pattern"},
+	}
+	if filter.Pattern != "" {
+		repoFilter.FieldFilters = map[string][]string{"pattern": {filter.Pattern}}
+	}
 	templates, total, err := s.templateRepo.List(ctx, repoFilter)
 	if err != nil {
 		return nil, 0, errors.NewDatabaseError("list screen templates", err)
@@ -347,10 +358,15 @@ func (s *screenConfigService) ListInstances(ctx context.Context, filter Instance
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
-	offset := (filter.Page - 1) * filter.PerPage
-	repoFilter := repository.ScreenInstanceFilter{Offset: offset, Limit: filter.PerPage, IsActive: filter.IsActive}
+	repoFilter := sharedrepo.ListFilters{
+		IsActive:     filter.IsActive,
+		Page:         filter.Page,
+		Limit:        filter.PerPage,
+		Search:       filter.Search,
+		SearchFields: []string{"name", "screen_key"},
+	}
 	if filter.TemplateID != "" {
-		repoFilter.TemplateID = &filter.TemplateID
+		repoFilter.FieldFilters = map[string][]string{"template_id": {filter.TemplateID}}
 	}
 	instances, total, err := s.instanceRepo.List(ctx, repoFilter)
 	if err != nil {
@@ -461,11 +477,11 @@ func (s *screenConfigService) ResolveScreenByKey(ctx context.Context, key string
 
 // ResolveAllScreens fetches all screen instances and their templates in 2 queries (no N+1).
 func (s *screenConfigService) ResolveAllScreens(ctx context.Context) ([]*CombinedScreenDTO, error) {
-	instances, _, err := s.instanceRepo.List(ctx, repository.ScreenInstanceFilter{Limit: 1000})
+	instances, _, err := s.instanceRepo.List(ctx, sharedrepo.ListFilters{Limit: 1000})
 	if err != nil {
 		return nil, errors.NewDatabaseError("list screen instances", err)
 	}
-	templates, _, err := s.templateRepo.List(ctx, repository.ScreenTemplateFilter{Limit: 1000})
+	templates, _, err := s.templateRepo.List(ctx, sharedrepo.ListFilters{Limit: 1000})
 	if err != nil {
 		return nil, errors.NewDatabaseError("list screen templates", err)
 	}

@@ -35,6 +35,7 @@ func NewAuditHandler(service service.AuditQueryService) *AuditHandler {
 // @Param category query string false "Filter by category"
 // @Param actor_id query string false "Filter by actor ID"
 // @Param service_name query string false "Filter by service name"
+// @Param search query string false "Search across actor_email, action and resource_type"
 // @Param from query string false "From date (RFC3339)"
 // @Param to query string false "To date (RFC3339)"
 // @Success 200 {object} map[string]interface{}
@@ -58,6 +59,7 @@ func (h *AuditHandler) List(c *gin.Context) {
 		Category:     c.Query("category"),
 		ActorID:      c.Query("actor_id"),
 		ServiceName:  c.Query("service_name"),
+		Search:       c.Query("search"),
 	}
 
 	if from := c.Query("from"); from != "" {

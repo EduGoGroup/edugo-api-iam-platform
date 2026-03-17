@@ -22,13 +22,13 @@ import (
 
 // Sentinel errors for auth operations
 var (
-	ErrInvalidCredentials    = errors.New("invalid credentials")
-	ErrUserNotFound          = errors.New("user not found")
-	ErrUserInactive          = errors.New("user inactive")
-	ErrInvalidRefreshToken   = errors.New("invalid refresh token")
-	ErrNoMembership          = errors.New("no active membership in target school")
-	ErrInvalidSchoolID       = errors.New("invalid school_id")
-	ErrTooManyLoginAttempts  = errors.New("too many login attempts, try again later")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrUserInactive         = errors.New("user inactive")
+	ErrInvalidRefreshToken  = errors.New("invalid refresh token")
+	ErrNoMembership         = errors.New("no active membership in target school")
+	ErrInvalidSchoolID      = errors.New("invalid school_id")
+	ErrTooManyLoginAttempts = errors.New("too many login attempts, try again later")
 )
 
 // AuthService defines the authentication service interface
@@ -41,15 +41,15 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo          sharedrepo.UserRepository
-	userRoleRepo      repository.UserRoleRepository
-	roleRepo          repository.RoleRepository
-	membershipRepo    sharedrepo.MembershipRepository
-	schoolRepo        sharedrepo.SchoolRepository
-	tokenService      *TokenService
-	logger            logger.Logger
-	auditLogger       audit.AuditLogger
-	loginAttemptRepo  authrepo.LoginAttemptRepository
+	userRepo         sharedrepo.UserRepository
+	userRoleRepo     repository.UserRoleRepository
+	roleRepo         repository.RoleRepository
+	membershipRepo   sharedrepo.MembershipRepository
+	schoolRepo       sharedrepo.SchoolRepository
+	tokenService     *TokenService
+	logger           logger.Logger
+	auditLogger      audit.AuditLogger
+	loginAttemptRepo authrepo.LoginAttemptRepository
 }
 
 // NewAuthService creates a new auth service

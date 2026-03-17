@@ -32,12 +32,12 @@ func (m *mockAuditLog) Log(ctx context.Context, event audit.AuditEvent) error {
 
 type mockLog struct{}
 
-func (m *mockLog) Debug(_ string, _ ...interface{})  {}
-func (m *mockLog) Info(_ string, _ ...interface{})   {}
-func (m *mockLog) Warn(_ string, _ ...interface{})   {}
-func (m *mockLog) Error(_ string, _ ...interface{})  {}
-func (m *mockLog) Fatal(_ string, _ ...interface{})  {}
-func (m *mockLog) Sync() error                       { return nil }
+func (m *mockLog) Debug(_ string, _ ...interface{})    {}
+func (m *mockLog) Info(_ string, _ ...interface{})     {}
+func (m *mockLog) Warn(_ string, _ ...interface{})     {}
+func (m *mockLog) Error(_ string, _ ...interface{})    {}
+func (m *mockLog) Fatal(_ string, _ ...interface{})    {}
+func (m *mockLog) Sync() error                         { return nil }
 func (m *mockLog) With(_ ...interface{}) logger.Logger { return m }
 
 type mockUserRepo struct {
@@ -162,9 +162,9 @@ func (m *mockRoleRepository) FindAll(_ context.Context, _ sharedrepo.ListFilters
 func (m *mockRoleRepository) FindByScope(_ context.Context, _ string, _ sharedrepo.ListFilters) ([]*entities.Role, int, error) {
 	return nil, 0, nil
 }
-func (m *mockRoleRepository) Create(_ context.Context, _ *entities.Role) error   { return nil }
-func (m *mockRoleRepository) Update(_ context.Context, _ *entities.Role) error   { return nil }
-func (m *mockRoleRepository) SoftDelete(_ context.Context, _ uuid.UUID) error    { return nil }
+func (m *mockRoleRepository) Create(_ context.Context, _ *entities.Role) error { return nil }
+func (m *mockRoleRepository) Update(_ context.Context, _ *entities.Role) error { return nil }
+func (m *mockRoleRepository) SoftDelete(_ context.Context, _ uuid.UUID) error  { return nil }
 func (m *mockRoleRepository) HasActiveUserRoles(_ context.Context, _ uuid.UUID) (bool, error) {
 	return false, nil
 }

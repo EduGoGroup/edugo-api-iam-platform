@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	domainrepo "github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
 	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/logger"
@@ -240,7 +239,7 @@ func (m *mockResourceRepo) Update(ctx context.Context, resource *entities.Resour
 type mockScreenTemplateRepo struct {
 	createFn  func(ctx context.Context, template *entities.ScreenTemplate) error
 	getByIDFn func(ctx context.Context, id uuid.UUID) (*entities.ScreenTemplate, error)
-	listFn    func(ctx context.Context, filter domainrepo.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error)
+	listFn    func(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error)
 	updateFn  func(ctx context.Context, template *entities.ScreenTemplate) error
 	deleteFn  func(ctx context.Context, id uuid.UUID) error
 }
@@ -257,7 +256,7 @@ func (m *mockScreenTemplateRepo) GetByID(ctx context.Context, id uuid.UUID) (*en
 	}
 	return nil, nil
 }
-func (m *mockScreenTemplateRepo) List(ctx context.Context, filter domainrepo.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
+func (m *mockScreenTemplateRepo) List(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error) {
 	if m.listFn != nil {
 		return m.listFn(ctx, filter)
 	}
@@ -282,7 +281,7 @@ type mockScreenInstanceRepo struct {
 	createFn         func(ctx context.Context, instance *entities.ScreenInstance) error
 	getByIDFn        func(ctx context.Context, id uuid.UUID) (*entities.ScreenInstance, error)
 	getByScreenKeyFn func(ctx context.Context, key string) (*entities.ScreenInstance, error)
-	listFn           func(ctx context.Context, filter domainrepo.ScreenInstanceFilter) ([]*entities.ScreenInstance, int, error)
+	listFn           func(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenInstance, int, error)
 	updateFn         func(ctx context.Context, instance *entities.ScreenInstance) error
 	deleteFn         func(ctx context.Context, id uuid.UUID) error
 }
@@ -305,7 +304,7 @@ func (m *mockScreenInstanceRepo) GetByScreenKey(ctx context.Context, key string)
 	}
 	return nil, nil
 }
-func (m *mockScreenInstanceRepo) List(ctx context.Context, filter domainrepo.ScreenInstanceFilter) ([]*entities.ScreenInstance, int, error) {
+func (m *mockScreenInstanceRepo) List(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenInstance, int, error) {
 	if m.listFn != nil {
 		return m.listFn(ctx, filter)
 	}
