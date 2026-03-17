@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-03-17
+
+### Tipo de Release: patch
+
+- Add search query parameter to API docs
+- chore: add coverage/ directory to .gitignore
+- feat: refactor screen-config filters to use shared ListFilters and add search support
+- pipeline
+
+---
+
 ## [0.17.0] - 2026-03-17
 
 ### Tipo de Release: patch
