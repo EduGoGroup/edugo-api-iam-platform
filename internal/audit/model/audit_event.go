@@ -43,13 +43,15 @@ type AuditFilters struct {
 	ServiceName  string
 	From         *time.Time
 	To           *time.Time
+	Search       string
+	SearchFields []string
 }
 
 // AuditSummary represents aggregated audit data
 type AuditSummary struct {
-	TotalEvents    int64              `json:"total_events"`
-	ByAction       map[string]int64   `json:"by_action"`
-	BySeverity     map[string]int64   `json:"by_severity"`
-	ByCategory     map[string]int64   `json:"by_category"`
-	ByResourceType map[string]int64   `json:"by_resource_type"`
+	TotalEvents    int64            `json:"total_events"`
+	ByAction       map[string]int64 `json:"by_action"`
+	BySeverity     map[string]int64 `json:"by_severity"`
+	ByCategory     map[string]int64 `json:"by_category"`
+	ByResourceType map[string]int64 `json:"by_resource_type"`
 }

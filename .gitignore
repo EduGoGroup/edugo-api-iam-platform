@@ -29,3 +29,6 @@ __debug*
 
 # Zed
 .zed/
+
+# Coverage
+coverage/

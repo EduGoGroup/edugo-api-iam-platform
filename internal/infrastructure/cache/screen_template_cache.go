@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
 
@@ -57,7 +58,7 @@ func copyTemplate(t *entities.ScreenTemplate) *entities.ScreenTemplate {
 	return &cp
 }
 
-func (r *CachedScreenTemplateRepository) List(ctx context.Context, filter repository.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
+func (r *CachedScreenTemplateRepository) List(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error) {
 	// List always goes to DB — pagination and filters make caching impractical
 	return r.inner.List(ctx, filter)
 }

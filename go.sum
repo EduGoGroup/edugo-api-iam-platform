@@ -1,5 +1,5 @@
-github.com/EduGoGroup/edugo-infrastructure/postgres v0.63.0 h1:w72p8aBb3m8UOlGbgaGrY5l/zMhmII/UQZcSpz3VXww=
-github.com/EduGoGroup/edugo-infrastructure/postgres v0.63.0/go.mod h1:hkAdXvfG1I9uInn0+UCLurRRVqdP3TBLX84GvEEN0QU=
+github.com/EduGoGroup/edugo-infrastructure/postgres v0.64.0 h1:IFFuQbrAwZcXU1RzVnlc08lbh145JGd6pSv1GpIioKU=
+github.com/EduGoGroup/edugo-infrastructure/postgres v0.64.0/go.mod h1:hkAdXvfG1I9uInn0+UCLurRRVqdP3TBLX84GvEEN0QU=
 github.com/EduGoGroup/edugo-shared/audit v0.1.0 h1:MZ9/HcQVJUD0beUI0Or76H3wb89nU2kwvc0kfkk31v8=
 github.com/EduGoGroup/edugo-shared/audit v0.1.0/go.mod h1:qUZWN7on6+fnm2TdW0Zw0zBjLawzx/uR0gYVPNPbzBQ=
 github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.2 h1:9j6oSIzwZ5RZCQIfCzIwCpauda38l9NlfZ0bOuUcveg=
@@ -10,14 +10,14 @@ github.com/EduGoGroup/edugo-shared/common v0.54.0 h1:ocfJtIQUa3ZOPY+5ofi4LQWJpgR
 github.com/EduGoGroup/edugo-shared/common v0.54.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1 h1:glii4TebN8g6XJQUdcg2ibR18PM5q6Uw/Gsl6PZbArw=
 github.com/EduGoGroup/edugo-shared/logger v0.50.1/go.mod h1:S4RAQUh0bq697MiQBh9rhrvf/hSt7PbRfr0wgtZy7is=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.3 h1:SqxvpQ1rdmEInube5BlZefWzUD8Pqj+/9lbcJBteTVc=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.3/go.mod h1:g6sIPPHRJGFRe/9shrTlTKE61KaS3dSudo3pmfpXN9U=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.4 h1:s8o+Q6aZjmEpoGXYEh9k8VTansWoHzaEtGAhBejoVWg=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.4/go.mod h1:DmKORGpsbyZ3qxkTugYk1H7qwk1tJ/Bn5O+BFBSwRbE=
 github.com/EduGoGroup/edugo-shared/repository v0.4.4 h1:MV2Ru/52dOPCSavqR54xiSMwWi1QbDG6j9ES9lp6080=
 github.com/EduGoGroup/edugo-shared/repository v0.4.4/go.mod h1:C9UDwIUbipPDFjO2uo2agMy59A8T3tF0+AAj7wx1DRA=
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
-github.com/bytedance/gopkg v0.1.3 h1:TPBSwH8RsouGCBcMBktLt1AymVo2TVsBVCY4b6TnZ/M=
-github.com/bytedance/gopkg v0.1.3/go.mod h1:576VvJ+eJgyCzdjS+c4+77QF3p7ubbtiKARP3TxducM=
+github.com/bytedance/gopkg v0.1.4 h1:oZnQwnX82KAIWb7033bEwtxvTqXcYMxDBaQxo5JJHWM=
+github.com/bytedance/gopkg v0.1.4/go.mod h1:v1zWfPm21Fb+OsyXN2VAHdL6TBb2L88anLQgdyje6R4=
 github.com/bytedance/sonic v1.15.0 h1:/PXeWFaR5ElNcVE84U0dOHjiMHQOwNIx3K4ymzh/uSE=
 github.com/bytedance/sonic v1.15.0/go.mod h1:tFkWrPz0/CUCLEF4ri4UkHekCIcdnkqXw9VduqpJh0k=
 github.com/bytedance/sonic/loader v0.5.0 h1:gXH3KVnatgY7loH5/TkeVyXPfESoqSBSBEiDd5VjlgE=

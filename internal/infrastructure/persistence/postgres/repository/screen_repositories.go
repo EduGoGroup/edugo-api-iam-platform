@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -34,26 +35,19 @@ func (r *postgresScreenTemplateRepository) GetByID(ctx context.Context, id uuid.
 	return &t, nil
 }
 
-func (r *postgresScreenTemplateRepository) List(ctx context.Context, filter repository.ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error) {
+func (r *postgresScreenTemplateRepository) List(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error) {
 	type templateWithTotal struct {
 		entities.ScreenTemplate
 		Total int64 `gorm:"column:_total"`
 	}
 
 	query := r.db.WithContext(ctx).Table("ui_config.screen_templates").Select("*, COUNT(*) OVER() as _total")
-	if filter.IsActive != nil {
-		query = query.Where("is_active = ?", *filter.IsActive)
-	}
-	if filter.Pattern != "" {
-		query = query.Where("pattern = ?", filter.Pattern)
-	}
+	query = filters.ApplyIsActive(query)
+	// Pattern is passed via FieldFilters["pattern"] when set by the service
+	query = filters.ApplyFieldFilters(query, []string{"pattern"})
+	query = filters.ApplySearch(query)
 	query = query.Order("created_at DESC")
-	if filter.Limit > 0 {
-		query = query.Limit(filter.Limit)
-	}
-	if filter.Offset > 0 {
-		query = query.Offset(filter.Offset)
-	}
+	query = filters.ApplyPagination(query)
 
 	var results []templateWithTotal
 	if err := query.Find(&results).Error; err != nil {
@@ -116,26 +110,19 @@ func (r *postgresScreenInstanceRepository) GetByScreenKey(ctx context.Context, k
 	return &i, nil
 }
 
-func (r *postgresScreenInstanceRepository) List(ctx context.Context, filter repository.ScreenInstanceFilter) ([]*entities.ScreenInstance, int, error) {
+func (r *postgresScreenInstanceRepository) List(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.ScreenInstance, int, error) {
 	type instanceWithTotal struct {
 		entities.ScreenInstance
 		Total int64 `gorm:"column:_total"`
 	}
 
 	query := r.db.WithContext(ctx).Table("ui_config.screen_instances").Select("*, COUNT(*) OVER() as _total")
-	if filter.IsActive != nil {
-		query = query.Where("is_active = ?", *filter.IsActive)
-	}
-	if filter.TemplateID != nil {
-		query = query.Where("template_id = ?", *filter.TemplateID)
-	}
+	query = filters.ApplyIsActive(query)
+	// template_id is passed via FieldFilters["template_id"] when set by the service
+	query = filters.ApplyFieldFilters(query, []string{"template_id"})
+	query = filters.ApplySearch(query)
 	query = query.Order("created_at DESC")
-	if filter.Limit > 0 {
-		query = query.Limit(filter.Limit)
-	}
-	if filter.Offset > 0 {
-		query = query.Offset(filter.Offset)
-	}
+	query = filters.ApplyPagination(query)
 
 	var results []instanceWithTotal
 	if err := query.Find(&results).Error; err != nil {

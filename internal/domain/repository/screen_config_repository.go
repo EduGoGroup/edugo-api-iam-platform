@@ -4,27 +4,14 @@ import (
 	"context"
 
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
+	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
-
-type ScreenTemplateFilter struct {
-	Pattern  string
-	IsActive *bool
-	Offset   int
-	Limit    int
-}
-
-type ScreenInstanceFilter struct {
-	TemplateID *string
-	IsActive   *bool
-	Offset     int
-	Limit      int
-}
 
 type ScreenTemplateRepository interface {
 	Create(ctx context.Context, template *entities.ScreenTemplate) error
 	GetByID(ctx context.Context, id uuid.UUID) (*entities.ScreenTemplate, error)
-	List(ctx context.Context, filter ScreenTemplateFilter) ([]*entities.ScreenTemplate, int, error)
+	List(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenTemplate, int, error)
 	Update(ctx context.Context, template *entities.ScreenTemplate) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -33,7 +20,7 @@ type ScreenInstanceRepository interface {
 	Create(ctx context.Context, instance *entities.ScreenInstance) error
 	GetByID(ctx context.Context, id uuid.UUID) (*entities.ScreenInstance, error)
 	GetByScreenKey(ctx context.Context, key string) (*entities.ScreenInstance, error)
-	List(ctx context.Context, filter ScreenInstanceFilter) ([]*entities.ScreenInstance, int, error)
+	List(ctx context.Context, filter sharedrepo.ListFilters) ([]*entities.ScreenInstance, int, error)
 	Update(ctx context.Context, instance *entities.ScreenInstance) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

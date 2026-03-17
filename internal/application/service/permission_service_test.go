@@ -24,7 +24,9 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 		}
 
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) { return perms, len(perms), nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
+				return perms, len(perms), nil
+			}},
 			&mockResourceRepo{},
 			&mockLogger{},
 			&mockAuditLogger{},
@@ -44,7 +46,9 @@ func TestPermissionService_ListPermissions(t *testing.T) {
 
 	t.Run("retorna lista vacía sin error", func(t *testing.T) {
 		svc := NewPermissionService(
-			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) { return []*entities.Permission{}, 0, nil }},
+			&mockPermissionRepo{findAllFn: func(ctx context.Context, filters sharedrepo.ListFilters) ([]*entities.Permission, int, error) {
+				return []*entities.Permission{}, 0, nil
+			}},
 			&mockResourceRepo{},
 			&mockLogger{},
 			&mockAuditLogger{},
@@ -500,7 +504,7 @@ func TestPermissionService_DeletePermission(t *testing.T) {
 
 		var deletedID uuid.UUID
 		permRepo := &mockPermissionRepo{
-			findByIDFn: func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
+			findByIDFn:                 func(ctx context.Context, gotID uuid.UUID) (*entities.Permission, error) { return perm, nil },
 			hasActiveRolePermissionsFn: func(ctx context.Context, pID uuid.UUID) (bool, error) { return false, nil },
 			softDeleteFn: func(ctx context.Context, gotID uuid.UUID) error {
 				deletedID = gotID

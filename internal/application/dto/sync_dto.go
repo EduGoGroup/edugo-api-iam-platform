@@ -8,12 +8,12 @@ import (
 
 // SyncBundleResponse represents the full sync bundle with all user data
 type SyncBundleResponse struct {
-	Menu              []MenuItemDTO            `json:"menu"`
-	Permissions       []string                 `json:"permissions"`
-	Screens           map[string]*ScreenBundle `json:"screens"`
+	Menu              []MenuItemDTO             `json:"menu"`
+	Permissions       []string                  `json:"permissions"`
+	Screens           map[string]*ScreenBundle  `json:"screens"`
 	AvailableContexts []*authDto.UserContextDTO `json:"available_contexts"`
-	Glossary          map[string]string        `json:"glossary"`
-	Hashes            map[string]string        `json:"hashes"`
+	Glossary          map[string]string         `json:"glossary"`
+	Hashes            map[string]string         `json:"hashes"`
 }
 
 // ScreenBundle represents a resolved screen definition within the sync bundle
