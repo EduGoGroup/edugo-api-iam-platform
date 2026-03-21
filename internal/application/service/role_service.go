@@ -154,6 +154,9 @@ func (s *roleService) UpdateRole(ctx context.Context, id string, req *dto.Update
 		}
 		role.Scope = *req.Scope
 	}
+	if req.IsActive != nil {
+		role.IsActive = *req.IsActive
+	}
 
 	role.UpdatedAt = time.Now()
 	if err := s.roleRepo.Update(ctx, role); err != nil {

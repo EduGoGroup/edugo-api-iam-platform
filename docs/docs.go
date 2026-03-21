@@ -3185,6 +3185,9 @@ const docTemplate = `{
                 "display_name": {
                     "type": "string"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },

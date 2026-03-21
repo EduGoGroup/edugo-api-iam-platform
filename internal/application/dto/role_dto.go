@@ -76,6 +76,7 @@ type UpdateRoleRequest struct {
 	DisplayName *string `json:"display_name"`
 	Description *string `json:"description"`
 	Scope       *string `json:"scope"`
+	IsActive    *bool   `json:"is_active"`
 }
 
 // CreatePermissionRequest represents the request to create a permission

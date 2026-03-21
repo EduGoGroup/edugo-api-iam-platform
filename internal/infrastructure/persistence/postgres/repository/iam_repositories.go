@@ -22,7 +22,8 @@ func NewPostgresRoleRepository(db *gorm.DB) repository.RoleRepository {
 
 func (r *postgresRoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Role, error) {
 	var role entities.Role
-	if err := r.db.WithContext(ctx).Where("is_active = true").First(&role, "id = ?", id).Error; err != nil {
+	// No is_active filter: allows fetching inactive roles for update/reactivation.
+	if err := r.db.WithContext(ctx).First(&role, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -362,7 +363,8 @@ func (r *postgresResourceRepository) FindAll(ctx context.Context, filters shared
 
 func (r *postgresResourceRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Resource, error) {
 	var res entities.Resource
-	if err := r.db.WithContext(ctx).Where("is_active = true").First(&res, "id = ?", id).Error; err != nil {
+	// No is_active filter: allows fetching inactive resources for update/reactivation.
+	if err := r.db.WithContext(ctx).First(&res, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
