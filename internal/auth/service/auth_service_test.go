@@ -193,9 +193,6 @@ func (m *mockMembershipRepo) FindByID(_ context.Context, _ uuid.UUID) (*entities
 func (m *mockMembershipRepo) FindByUnit(_ context.Context, _ uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.Membership, int64, error) {
 	return nil, 0, nil
 }
-func (m *mockMembershipRepo) FindBySchool(_ context.Context, _ uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.Membership, int64, error) {
-	return nil, 0, nil
-}
 func (m *mockMembershipRepo) FindByUnitAndRole(_ context.Context, _ uuid.UUID, _ string, _ bool, _ sharedrepo.ListFilters) ([]*entities.Membership, int64, error) {
 	return nil, 0, nil
 }
