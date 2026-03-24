@@ -710,8 +710,8 @@ func TestGetSchoolUnits_Success(t *testing.T) {
 			findBySchoolIDFn: func(_ context.Context, sid uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error) {
 				assert.Equal(t, schoolID, sid)
 				return []*entities.AcademicUnit{
-					{ID: unit1ID, SchoolID: schoolID, Name: "Primary", Type: "sede"},
-					{ID: unit2ID, SchoolID: schoolID, Name: "Secondary", Type: "sede"},
+					{ID: unit1ID, SchoolID: schoolID, Name: "Primary", Type: "sede", IsActive: true},
+					{ID: unit2ID, SchoolID: schoolID, Name: "Secondary", Type: "sede", IsActive: true},
 				}, 2, nil
 			},
 		},
