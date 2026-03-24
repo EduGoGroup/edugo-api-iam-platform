@@ -199,7 +199,7 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Error:   "bad_request",
-			Message: "school_id is required and must be a valid UUID",
+			Message: "Invalid request body",
 			Code:    "INVALID_REQUEST",
 		})
 		return
@@ -237,6 +237,18 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 				Error:   "bad_request",
 				Message: "Invalid school_id",
 				Code:    "INVALID_SCHOOL_ID",
+			})
+		case errors.Is(err, service.ErrAcademicUnitNotFound):
+			c.JSON(http.StatusNotFound, dto.ErrorResponse{
+				Error:   "not_found",
+				Message: "Academic unit not found",
+				Code:    "ACADEMIC_UNIT_NOT_FOUND",
+			})
+		case errors.Is(err, service.ErrAcademicUnitSchoolMismatch):
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error:   "bad_request",
+				Message: "Academic unit does not belong to the target school",
+				Code:    "ACADEMIC_UNIT_SCHOOL_MISMATCH",
 			})
 		default:
 			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
@@ -317,12 +329,21 @@ func (h *AuthHandler) GetSchoolUnits(c *gin.Context) {
 
 	response, err := h.authService.GetSchoolUnits(c.Request.Context(), schoolID)
 	if err != nil {
-		h.logger.Error("error fetching school units", "school_id", schoolID, "error", err)
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Error fetching school units",
-			Code:    "UNITS_ERROR",
-		})
+		switch {
+		case errors.Is(err, service.ErrInvalidSchoolID):
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error:   "bad_request",
+				Message: "Invalid school_id",
+				Code:    "INVALID_SCHOOL_ID",
+			})
+		default:
+			h.logger.Error("error fetching school units", "school_id", schoolID, "error", err)
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Error:   "internal_error",
+				Message: "Error fetching school units",
+				Code:    "UNITS_ERROR",
+			})
+		}
 		return
 	}
 

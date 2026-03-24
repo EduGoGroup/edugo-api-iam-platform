@@ -28,8 +28,10 @@ var (
 	ErrInvalidRefreshToken  = errors.New("invalid refresh token")
 	ErrNoMembership         = errors.New("no active membership in target school")
 	ErrInvalidSchoolID      = errors.New("invalid school_id")
-	ErrUnauthorizedUnit     = errors.New("user has no active membership in the requested academic unit")
-	ErrTooManyLoginAttempts = errors.New("too many login attempts, try again later")
+	ErrUnauthorizedUnit           = errors.New("user has no active membership in the requested academic unit")
+	ErrTooManyLoginAttempts       = errors.New("too many login attempts, try again later")
+	ErrAcademicUnitNotFound       = errors.New("academic unit not found")
+	ErrAcademicUnitSchoolMismatch = errors.New("academic unit does not belong to target school")
 )
 
 // AuthService defines the authentication service interface
@@ -564,10 +566,10 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		}
 		unit, err := s.academicUnitRepo.FindByID(ctx, unitUUID)
 		if err != nil || unit == nil {
-			return nil, fmt.Errorf("academic unit not found")
+			return nil, ErrAcademicUnitNotFound
 		}
 		if unit.SchoolID.String() != targetSchoolID {
-			return nil, fmt.Errorf("academic unit does not belong to target school")
+			return nil, ErrAcademicUnitSchoolMismatch
 		}
 
 		// Security: verify the user has an active membership in this unit
@@ -1000,7 +1002,7 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 func (s *authService) GetSchoolUnits(ctx context.Context, schoolID string) (*dto.SchoolUnitsResponse, error) {
 	schoolUUID, err := uuid.Parse(schoolID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid school_id: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrInvalidSchoolID, err)
 	}
 
 	// Filter only active units. The repository already hardcodes is_active = true,
@@ -1041,18 +1043,13 @@ func (s *authService) autoPopulateUnit(ctx context.Context, userID uuid.UUID, sc
 			"user_id", userID.String(), "error", err)
 		return
 	}
+	seen := make(map[uuid.UUID]struct{})
 	var unitIDs []uuid.UUID
 	for _, m := range memberships {
 		if m.SchoolID == *schoolID && m.AcademicUnitID != nil && m.IsActive {
 			uid := *m.AcademicUnitID
-			found := false
-			for _, existing := range unitIDs {
-				if existing == uid {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, exists := seen[uid]; !exists {
+				seen[uid] = struct{}{}
 				unitIDs = append(unitIDs, uid)
 			}
 		}
