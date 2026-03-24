@@ -28,7 +28,10 @@ var (
 	ErrInvalidRefreshToken  = errors.New("invalid refresh token")
 	ErrNoMembership         = errors.New("no active membership in target school")
 	ErrInvalidSchoolID      = errors.New("invalid school_id")
-	ErrTooManyLoginAttempts = errors.New("too many login attempts, try again later")
+	ErrUnauthorizedUnit           = errors.New("user has no active membership in the requested academic unit")
+	ErrTooManyLoginAttempts       = errors.New("too many login attempts, try again later")
+	ErrAcademicUnitNotFound       = errors.New("academic unit not found")
+	ErrAcademicUnitSchoolMismatch = errors.New("academic unit does not belong to target school")
 )
 
 // AuthService defines the authentication service interface
@@ -36,8 +39,9 @@ type AuthService interface {
 	Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error)
 	Logout(ctx context.Context, accessToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error)
-	SwitchContext(ctx context.Context, userID, targetSchoolID string) (*dto.SwitchContextResponse, error)
+	SwitchContext(ctx context.Context, userID, targetSchoolID, academicUnitID string) (*dto.SwitchContextResponse, error)
 	GetAvailableContexts(ctx context.Context, userID string, currentContext *auth.UserContext) (*dto.AvailableContextsResponse, error)
+	GetSchoolUnits(ctx context.Context, schoolID string) (*dto.SchoolUnitsResponse, error)
 }
 
 type authService struct {
@@ -46,6 +50,7 @@ type authService struct {
 	roleRepo         repository.RoleRepository
 	membershipRepo   sharedrepo.MembershipRepository
 	schoolRepo       sharedrepo.SchoolRepository
+	academicUnitRepo sharedrepo.AcademicUnitRepository
 	tokenService     *TokenService
 	logger           logger.Logger
 	auditLogger      audit.AuditLogger
@@ -59,6 +64,7 @@ func NewAuthService(
 	roleRepo repository.RoleRepository,
 	membershipRepo sharedrepo.MembershipRepository,
 	schoolRepo sharedrepo.SchoolRepository,
+	academicUnitRepo sharedrepo.AcademicUnitRepository,
 	tokenService *TokenService,
 	logger logger.Logger,
 	auditLogger audit.AuditLogger,
@@ -70,6 +76,7 @@ func NewAuthService(
 		roleRepo:         roleRepo,
 		membershipRepo:   membershipRepo,
 		schoolRepo:       schoolRepo,
+		academicUnitRepo: academicUnitRepo,
 		tokenService:     tokenService,
 		logger:           logger,
 		auditLogger:      auditLogger,
@@ -226,6 +233,8 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			if err == nil && school != nil {
 				globalContext.SchoolName = school.Name
 			}
+			// Auto-populate AcademicUnitID for users with exactly 1 unit
+			s.autoPopulateUnit(ctx, user.ID, firstSchoolID, globalContext)
 		}
 		activeContext = globalContext
 	} else if firstSchoolID != nil {
@@ -261,11 +270,13 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	}
 	tokenResponse.Schools = schools
 	tokenResponse.ActiveContext = &dto.UserContextDTO{
-		RoleID:      activeContext.RoleID,
-		RoleName:    activeContext.RoleName,
-		SchoolID:    activeContext.SchoolID,
-		SchoolName:  activeContext.SchoolName,
-		Permissions: activeContext.Permissions,
+		RoleID:           activeContext.RoleID,
+		RoleName:         activeContext.RoleName,
+		SchoolID:         activeContext.SchoolID,
+		SchoolName:       activeContext.SchoolName,
+		AcademicUnitID:   activeContext.AcademicUnitID,
+		AcademicUnitName: activeContext.AcademicUnitName,
+		Permissions:      activeContext.Permissions,
 	}
 
 	s.logger.Info("user logged in",
@@ -394,11 +405,13 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	resp.RefreshToken = newRefreshJWT
 	resp.ActiveContext = &dto.UserContextDTO{
-		RoleID:      activeContext.RoleID,
-		RoleName:    activeContext.RoleName,
-		SchoolID:    activeContext.SchoolID,
-		SchoolName:  activeContext.SchoolName,
-		Permissions: activeContext.Permissions,
+		RoleID:           activeContext.RoleID,
+		RoleName:         activeContext.RoleName,
+		SchoolID:         activeContext.SchoolID,
+		SchoolName:       activeContext.SchoolName,
+		AcademicUnitID:   activeContext.AcademicUnitID,
+		AcademicUnitName: activeContext.AcademicUnitName,
+		Permissions:      activeContext.Permissions,
 	}
 
 	s.logger.Info("token refreshed", "user_id", userID, "email", user.Email)
@@ -478,7 +491,7 @@ func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]d
 }
 
 // SwitchContext switches the active school context for the user
-func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID string) (*dto.SwitchContextResponse, error) {
+func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID, academicUnitID string) (*dto.SwitchContextResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user_id: %w", err)
@@ -542,6 +555,56 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 		}
 	}
 
+	// Set academic unit if provided in request, validating:
+	// 1. UUID is valid (already enforced by DTO binding:"omitempty,uuid")
+	// 2. Unit exists and belongs to the target school
+	// 3. User has an active membership in that unit
+	if academicUnitID != "" {
+		unitUUID, err := uuid.Parse(academicUnitID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid academic_unit_id: %w", err)
+		}
+		unit, err := s.academicUnitRepo.FindByID(ctx, unitUUID)
+		if err != nil || unit == nil {
+			return nil, ErrAcademicUnitNotFound
+		}
+		if unit.SchoolID.String() != targetSchoolID {
+			return nil, ErrAcademicUnitSchoolMismatch
+		}
+
+		// Security: verify the user has an active membership in this unit
+		active := true
+		userMemberships, _, err := s.membershipRepo.FindByUser(ctx, userUUID, sharedrepo.ListFilters{IsActive: &active})
+		if err != nil {
+			return nil, fmt.Errorf("error verifying unit membership: %w", err)
+		}
+		hasUnitMembership := false
+		for _, m := range userMemberships {
+			if m.SchoolID == schoolUUID && m.AcademicUnitID != nil && *m.AcademicUnitID == unitUUID && m.IsActive {
+				hasUnitMembership = true
+				break
+			}
+		}
+		// Global-role users (e.g. super_admin) may not have a membership — allow them through
+		if !hasUnitMembership && membership != nil {
+			s.logger.Warn("switch-context: user has no membership in requested unit",
+				"user_id", userID,
+				"school_id", targetSchoolID,
+				"academic_unit_id", academicUnitID,
+			)
+			return nil, ErrUnauthorizedUnit
+		}
+
+		activeContext.AcademicUnitID = academicUnitID
+		activeContext.AcademicUnitName = unit.Name
+
+		// Recompute permissions with unit context
+		updatedPerms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, &schoolUUID, &unitUUID)
+		if err == nil {
+			activeContext.Permissions = updatedPerms
+		}
+	}
+
 	tokenResponse, err := s.tokenService.GenerateTokenPairWithContext(
 		user.ID.String(),
 		user.Email,
@@ -559,13 +622,14 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 		ResourceType: "session",
 		Severity:     audit.SeverityInfo,
 		Category:     audit.CategoryAuth,
-		Metadata:     map[string]interface{}{"new_school_id": targetSchoolID},
+		Metadata:     map[string]interface{}{"new_school_id": targetSchoolID, "academic_unit_id": academicUnitID},
 	})
 
 	s.logger.Info("context switched",
 		"entity_type", "auth_context",
 		"user_id", userID,
 		"new_school_id", targetSchoolID,
+		"academic_unit_id", academicUnitID,
 		"new_role", activeContext.RoleName,
 	)
 
@@ -575,82 +639,243 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID 
 		ExpiresIn:    tokenResponse.ExpiresIn,
 		TokenType:    tokenResponse.TokenType,
 		Context: &dto.ContextInfo{
-			SchoolID:   targetSchoolID,
-			SchoolName: activeContext.SchoolName,
-			Role:       activeContext.RoleName,
-			UserID:     userID,
-			Email:      user.Email,
+			SchoolID:         targetSchoolID,
+			SchoolName:       activeContext.SchoolName,
+			AcademicUnitID:   activeContext.AcademicUnitID,
+			AcademicUnitName: activeContext.AcademicUnitName,
+			Role:             activeContext.RoleName,
+			UserID:           userID,
+			Email:            user.Email,
 		},
 	}, nil
 }
 
-// GetAvailableContexts returns all available contexts (roles/schools) for the user
+// GetAvailableContexts returns all available contexts (roles/schools/units) for the user.
+// It merges data from iam.user_roles (for RBAC roles) and academic.memberships (for unit assignments).
 func (s *authService) GetAvailableContexts(ctx context.Context, userID string, currentContext *auth.UserContext) (*dto.AvailableContextsResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user_id: %w", err)
 	}
 
-	userRoles, err := s.userRoleRepo.FindByUser(ctx, userUUID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching roles: %w", err)
+	// Phase 1: Fetch user_roles and memberships in parallel
+	var userRoles []*entities.UserRole
+	var userRolesErr error
+	var memberships []*entities.Membership
+	var membershipsErr error
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		userRoles, userRolesErr = s.userRoleRepo.FindByUser(ctx, userUUID)
+	}()
+	go func() {
+		defer wg.Done()
+		memberships, _, membershipsErr = s.membershipRepo.FindByUser(ctx, userUUID, sharedrepo.ListFilters{})
+	}()
+	wg.Wait()
+
+	if userRolesErr != nil {
+		return nil, fmt.Errorf("error fetching roles: %w", userRolesErr)
+	}
+	if membershipsErr != nil {
+		s.logger.Warn("error fetching memberships for available contexts", "user_id", userID, "error", membershipsErr)
+		// Continue without memberships — roles are still available
 	}
 
-	roleCache := make(map[string]string)
-	schoolCache := make(map[string]string)
+	// Phase 2: Build caches for role, school, and unit names
+	roleCache := make(map[string]string)   // roleID -> roleName
+	schoolCache := make(map[string]string) // schoolID -> schoolName
+	unitCache := make(map[string]string)   // unitID -> unitName
 
+	resolveRole := func(roleID uuid.UUID) string {
+		key := roleID.String()
+		if name, ok := roleCache[key]; ok {
+			return name
+		}
+		role, err := s.roleRepo.FindByID(ctx, roleID)
+		if err != nil || role == nil {
+			return ""
+		}
+		roleCache[key] = role.Name
+		return role.Name
+	}
+
+	resolveSchool := func(schoolID uuid.UUID) string {
+		key := schoolID.String()
+		if name, ok := schoolCache[key]; ok {
+			return name
+		}
+		school, err := s.schoolRepo.FindByID(ctx, schoolID)
+		if err != nil || school == nil {
+			return ""
+		}
+		schoolCache[key] = school.Name
+		return school.Name
+	}
+
+	resolveUnit := func(unitID uuid.UUID) string {
+		key := unitID.String()
+		if name, ok := unitCache[key]; ok {
+			return name
+		}
+		unit, err := s.academicUnitRepo.FindByID(ctx, unitID)
+		if err != nil || unit == nil {
+			return ""
+		}
+		unitCache[key] = unit.Name
+		return unit.Name
+	}
+
+	// Phase 3: Build available contexts from user_roles (base RBAC entries)
 	var available []*dto.UserContextDTO
-	for _, ur := range userRoles {
-		roleID := ur.RoleID.String()
 
-		roleName, ok := roleCache[roleID]
-		if !ok {
-			role, err := s.roleRepo.FindByID(ctx, ur.RoleID)
-			if err != nil {
-				s.logger.Warn("error fetching role", "role_id", roleID, "error", err)
-				continue
-			}
-			if role == nil {
-				s.logger.Warn("role not found", "role_id", roleID)
-				continue
-			}
-			roleName = role.Name
-			roleCache[roleID] = roleName
+	// Track which (school, unit) combinations come from memberships to avoid duplicates
+	type schoolUnitKey struct{ schoolID, unitID string }
+	membershipKeys := make(map[schoolUnitKey]bool)
+
+	// First, add membership-based contexts (these have unit info)
+	for _, m := range memberships {
+		if !m.IsActive {
+			continue
+		}
+		schoolID := m.SchoolID.String()
+		schoolName := resolveSchool(m.SchoolID)
+
+		unitID := ""
+		unitName := ""
+		if m.AcademicUnitID != nil {
+			unitID = m.AcademicUnitID.String()
+			unitName = resolveUnit(*m.AcademicUnitID)
 		}
 
-		schoolID := ""
-		schoolName := ""
-		if ur.SchoolID != nil {
-			schoolID = ur.SchoolID.String()
-			if cached, ok := schoolCache[schoolID]; ok {
-				schoolName = cached
-			} else {
-				school, err := s.schoolRepo.FindByID(ctx, *ur.SchoolID)
-				if err == nil && school != nil {
-					schoolName = school.Name
-					schoolCache[schoolID] = schoolName
+		membershipKeys[schoolUnitKey{schoolID, unitID}] = true
+
+		// Find matching role from user_roles — try (school, unit) first, then school-only, then global
+		roleName := ""
+		roleID := ""
+		if m.AcademicUnitID != nil {
+			for _, ur := range userRoles {
+				if ur.SchoolID != nil && ur.SchoolID.String() == schoolID &&
+					ur.AcademicUnitID != nil && ur.AcademicUnitID.String() == unitID {
+					roleID = ur.RoleID.String()
+					roleName = resolveRole(ur.RoleID)
+					break
+				}
+			}
+		}
+		if roleName == "" {
+			for _, ur := range userRoles {
+				if ur.SchoolID != nil && ur.SchoolID.String() == schoolID && ur.AcademicUnitID == nil {
+					roleID = ur.RoleID.String()
+					roleName = resolveRole(ur.RoleID)
+					break
+				}
+			}
+		}
+		// If no school-specific role, use global role
+		if roleName == "" {
+			for _, ur := range userRoles {
+				if ur.SchoolID == nil {
+					roleID = ur.RoleID.String()
+					roleName = resolveRole(ur.RoleID)
+					break
 				}
 			}
 		}
 
+		// Skip entries where no role was found
+		if roleName == "" {
+			continue
+		}
+
+		// Populate permissions for membership-based contexts
+		var schoolUUID *uuid.UUID
+		sid := m.SchoolID
+		schoolUUID = &sid
+
+		var unitUUID *uuid.UUID
+		if m.AcademicUnitID != nil {
+			unitUUID = m.AcademicUnitID
+		}
+
+		perms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, schoolUUID, unitUUID)
+		if err != nil {
+			s.logger.Warn("error fetching permissions for membership context",
+				"user_id", userUUID.String(), "school_id", schoolID, "error", err)
+		}
+
+		available = append(available, &dto.UserContextDTO{
+			RoleID:           roleID,
+			RoleName:         roleName,
+			SchoolID:         schoolID,
+			SchoolName:       schoolName,
+			AcademicUnitID:   unitID,
+			AcademicUnitName: unitName,
+			Permissions:      perms,
+		})
+	}
+
+	// Then, add user_role entries that don't overlap with memberships (global roles, school-level admins)
+	for _, ur := range userRoles {
+		schoolID := ""
+		if ur.SchoolID != nil {
+			schoolID = ur.SchoolID.String()
+		}
+		unitID := ""
+		if ur.AcademicUnitID != nil {
+			unitID = ur.AcademicUnitID.String()
+		}
+
+		key := schoolUnitKey{schoolID, unitID}
+		if membershipKeys[key] {
+			continue // Already covered by a membership entry
+		}
+
+		// Check if this school+empty-unit is already covered by membership entries with units
+		if unitID == "" && schoolID != "" {
+			alreadyCovered := false
+			for mk := range membershipKeys {
+				if mk.schoolID == schoolID {
+					alreadyCovered = true
+					break
+				}
+			}
+			if alreadyCovered {
+				continue
+			}
+		}
+
+		roleName := resolveRole(ur.RoleID)
+		if roleName == "" {
+			continue
+		}
+
+		schoolName := ""
+		if ur.SchoolID != nil {
+			schoolName = resolveSchool(*ur.SchoolID)
+		}
+
+		unitName := ""
+		if ur.AcademicUnitID != nil {
+			unitName = resolveUnit(*ur.AcademicUnitID)
+		}
+
 		permissions, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, ur.SchoolID, ur.AcademicUnitID)
 		if err != nil {
-			s.logger.Warn("error fetching user permissions", "user_id", userUUID.String(), "role_id", roleID, "error", err)
+			s.logger.Warn("error fetching user permissions", "user_id", userUUID.String(), "error", err)
 		}
 
-		item := &dto.UserContextDTO{
-			RoleID:      roleID,
-			RoleName:    roleName,
-			SchoolID:    schoolID,
-			SchoolName:  schoolName,
-			Permissions: permissions,
-		}
-
-		if ur.AcademicUnitID != nil {
-			item.AcademicUnitID = ur.AcademicUnitID.String()
-		}
-
-		available = append(available, item)
+		available = append(available, &dto.UserContextDTO{
+			RoleID:           ur.RoleID.String(),
+			RoleName:         roleName,
+			SchoolID:         schoolID,
+			SchoolName:       schoolName,
+			AcademicUnitID:   unitID,
+			AcademicUnitName: unitName,
+			Permissions:      permissions,
+		})
 	}
 
 	var current *dto.UserContextDTO
@@ -764,5 +989,75 @@ func (s *authService) buildUserContext(ctx context.Context, userID uuid.UUID, sc
 		uc.SchoolName = schoolName
 	}
 
+	// Auto-populate AcademicUnitID if user has exactly 1 unit in this school
+	if schoolID != nil {
+		s.autoPopulateUnit(ctx, userID, schoolID, uc)
+	}
+
 	return uc
+}
+
+// GetSchoolUnits returns all active academic units for a given school.
+// Used by users with context:browse_units permission to select a unit.
+func (s *authService) GetSchoolUnits(ctx context.Context, schoolID string) (*dto.SchoolUnitsResponse, error) {
+	schoolUUID, err := uuid.Parse(schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidSchoolID, err)
+	}
+
+	// Filter only active units. The repository already hardcodes is_active = true,
+	// but we pass it explicitly for clarity and defense-in-depth.
+	active := true
+	units, _, err := s.academicUnitRepo.FindBySchoolID(ctx, schoolUUID, sharedrepo.ListFilters{IsActive: &active})
+	if err != nil {
+		return nil, fmt.Errorf("error fetching units: %w", err)
+	}
+
+	result := make([]dto.UnitInfoDTO, 0, len(units))
+	for _, u := range units {
+		// Defense-in-depth: skip inactive units even if the repo returned them
+		if !u.IsActive {
+			continue
+		}
+		result = append(result, dto.UnitInfoDTO{
+			ID:   u.ID.String(),
+			Name: u.Name,
+			Type: u.Type,
+		})
+	}
+
+	return &dto.SchoolUnitsResponse{
+		Units: result,
+		Total: int64(len(result)),
+	}, nil
+}
+
+// autoPopulateUnit sets AcademicUnitID on the context if the user has exactly 1 active unit in the school.
+func (s *authService) autoPopulateUnit(ctx context.Context, userID uuid.UUID, schoolID *uuid.UUID, uc *auth.UserContext) {
+	if schoolID == nil || uc == nil {
+		return
+	}
+	memberships, _, err := s.membershipRepo.FindByUser(ctx, userID, sharedrepo.ListFilters{})
+	if err != nil {
+		s.logger.Warn("error fetching memberships for unit auto-select",
+			"user_id", userID.String(), "error", err)
+		return
+	}
+	seen := make(map[uuid.UUID]struct{})
+	var unitIDs []uuid.UUID
+	for _, m := range memberships {
+		if m.SchoolID == *schoolID && m.AcademicUnitID != nil && m.IsActive {
+			uid := *m.AcademicUnitID
+			if _, exists := seen[uid]; !exists {
+				seen[uid] = struct{}{}
+				unitIDs = append(unitIDs, uid)
+			}
+		}
+	}
+	if len(unitIDs) == 1 {
+		uc.AcademicUnitID = unitIDs[0].String()
+		if unit, err := s.academicUnitRepo.FindByID(ctx, unitIDs[0]); err == nil && unit != nil {
+			uc.AcademicUnitName = unit.Name
+		}
+	}
 }
