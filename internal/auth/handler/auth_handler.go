@@ -205,7 +205,7 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 		return
 	}
 
-	response, err := h.authService.SwitchContext(c.Request.Context(), userID, req.SchoolID)
+	response, err := h.authService.SwitchContext(c.Request.Context(), userID, req.SchoolID, req.AcademicUnitID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrNoMembership):
@@ -279,6 +279,60 @@ func (h *AuthHandler) GetAvailableContexts(c *gin.Context) {
 			Error:   "internal_error",
 			Message: "Error fetching available contexts",
 			Code:    "CONTEXTS_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetSchoolUnits returns all academic units for a school.
+// Requires context:browse_units permission.
+func (h *AuthHandler) GetSchoolUnits(c *gin.Context) {
+	claims, _ := ginmiddleware.GetClaims(c)
+	if claims == nil || claims.ActiveContext == nil {
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "User not authenticated",
+			Code:    "NOT_AUTHENTICATED",
+		})
+		return
+	}
+
+	// Check permission
+	hasPermission := false
+	for _, p := range claims.ActiveContext.Permissions {
+		if p == "context:browse_units" {
+			hasPermission = true
+			break
+		}
+	}
+	if !hasPermission {
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "forbidden",
+			Message: "Permission context:browse_units required",
+			Code:    "FORBIDDEN",
+		})
+		return
+	}
+
+	schoolID := c.Param("school_id")
+	if schoolID == "" {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "bad_request",
+			Message: "school_id is required",
+			Code:    "MISSING_SCHOOL_ID",
+		})
+		return
+	}
+
+	response, err := h.authService.GetSchoolUnits(c.Request.Context(), schoolID)
+	if err != nil {
+		h.logger.Error("error fetching school units", "school_id", schoolID, "error", err)
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Error fetching school units",
+			Code:    "UNITS_ERROR",
 		})
 		return
 	}

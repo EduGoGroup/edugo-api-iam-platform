@@ -222,6 +222,15 @@ func (m *mockSchoolRepo) ExistsByCode(_ context.Context, _ string) (bool, error)
 	return false, nil
 }
 
+type mockAcademicUnitRepo struct{}
+
+func (m *mockAcademicUnitRepo) FindByID(_ context.Context, _ uuid.UUID) (*entities.AcademicUnit, error) {
+	return nil, nil
+}
+func (m *mockAcademicUnitRepo) FindBySchoolID(_ context.Context, _ uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error) {
+	return nil, 0, nil
+}
+
 type mockLoginAttemptRepo struct {
 	createFn           func(ctx context.Context, attempt *model.LoginAttempt) error
 	countFailedSinceFn func(ctx context.Context, identifier string, since time.Time) (int64, error)
@@ -296,6 +305,7 @@ func TestLogin_Success_GlobalRole(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -346,6 +356,7 @@ func TestLogin_Success_SchoolRole(t *testing.T) {
 				return &entities.School{ID: schoolID, Name: "Test School"}, nil
 			},
 		},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -373,6 +384,7 @@ func TestLogin_InvalidPassword(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -395,6 +407,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -420,6 +433,7 @@ func TestLogin_InactiveUser(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -444,6 +458,7 @@ func TestLogin_RateLimited(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -476,6 +491,7 @@ func TestLogin_NoRoles(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -514,6 +530,7 @@ func TestLogin_AuditLogRecorded(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{
@@ -560,6 +577,7 @@ func TestLogin_EmailNormalized(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -601,13 +619,14 @@ func TestSwitchContext_GlobalRole(t *testing.T) {
 				return &entities.School{ID: schoolID, Name: "Target School"}, nil
 			},
 		},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
 	)
 
-	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), schoolID.String())
+	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), schoolID.String(), "")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, "super_admin", resp.Context.Role)
@@ -631,13 +650,14 @@ func TestSwitchContext_NoMembershipNoGlobalRole(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
 	)
 
-	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), uuid.New().String())
+	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), uuid.New().String(), "")
 	assert.Nil(t, resp)
 	assert.ErrorIs(t, err, ErrNoMembership)
 }
