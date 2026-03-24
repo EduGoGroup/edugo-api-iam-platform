@@ -606,6 +606,15 @@ definitions:
       name:
         type: string
     type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolUnitsResponse:
+    properties:
+      total:
+        type: integer
+      units:
+        items:
+          $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UnitInfoDTO'
+        type: array
+    type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SwitchContextRequest:
     properties:
       academic_unit_id:
@@ -614,6 +623,15 @@ definitions:
         type: string
     required:
     - school_id
+    type: object
+  github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UnitInfoDTO:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UserContextDTO:
     properties:
@@ -872,6 +890,39 @@ paths:
       security:
       - BearerAuth: []
       summary: Get available school contexts
+      tags:
+      - Auth
+  /auth/contexts/schools/{school_id}/units:
+    get:
+      description: Returns all active academic units for the specified school
+      parameters:
+      - description: School ID (UUID)
+        in: path
+        name: school_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolUnitsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get school units
       tags:
       - Auth
   /auth/login:
