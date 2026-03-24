@@ -214,6 +214,12 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 				Message: "No active membership in target school",
 				Code:    "NO_MEMBERSHIP",
 			})
+		case errors.Is(err, service.ErrUnauthorizedUnit):
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "forbidden",
+				Message: "No active membership in the requested academic unit",
+				Code:    "UNAUTHORIZED_UNIT",
+			})
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error:   "unauthorized",

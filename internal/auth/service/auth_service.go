@@ -28,6 +28,7 @@ var (
 	ErrInvalidRefreshToken  = errors.New("invalid refresh token")
 	ErrNoMembership         = errors.New("no active membership in target school")
 	ErrInvalidSchoolID      = errors.New("invalid school_id")
+	ErrUnauthorizedUnit     = errors.New("user has no active membership in the requested academic unit")
 	ErrTooManyLoginAttempts = errors.New("too many login attempts, try again later")
 )
 
@@ -552,7 +553,10 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		}
 	}
 
-	// Set academic unit if provided in request, validating it belongs to the target school
+	// Set academic unit if provided in request, validating:
+	// 1. UUID is valid (already enforced by DTO binding:"omitempty,uuid")
+	// 2. Unit exists and belongs to the target school
+	// 3. User has an active membership in that unit
 	if academicUnitID != "" {
 		unitUUID, err := uuid.Parse(academicUnitID)
 		if err != nil {
@@ -565,6 +569,30 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		if unit.SchoolID.String() != targetSchoolID {
 			return nil, fmt.Errorf("academic unit does not belong to target school")
 		}
+
+		// Security: verify the user has an active membership in this unit
+		active := true
+		userMemberships, _, err := s.membershipRepo.FindByUser(ctx, userUUID, sharedrepo.ListFilters{IsActive: &active})
+		if err != nil {
+			return nil, fmt.Errorf("error verifying unit membership: %w", err)
+		}
+		hasUnitMembership := false
+		for _, m := range userMemberships {
+			if m.SchoolID == schoolUUID && m.AcademicUnitID != nil && *m.AcademicUnitID == unitUUID && m.IsActive {
+				hasUnitMembership = true
+				break
+			}
+		}
+		// Global-role users (e.g. super_admin) may not have a membership — allow them through
+		if !hasUnitMembership && membership != nil {
+			s.logger.Warn("switch-context: user has no membership in requested unit",
+				"user_id", userID,
+				"school_id", targetSchoolID,
+				"academic_unit_id", academicUnitID,
+			)
+			return nil, ErrUnauthorizedUnit
+		}
+
 		activeContext.AcademicUnitID = academicUnitID
 		activeContext.AcademicUnitName = unit.Name
 
@@ -975,13 +1003,20 @@ func (s *authService) GetSchoolUnits(ctx context.Context, schoolID string) (*dto
 		return nil, fmt.Errorf("invalid school_id: %w", err)
 	}
 
-	units, total, err := s.academicUnitRepo.FindBySchoolID(ctx, schoolUUID, sharedrepo.ListFilters{})
+	// Filter only active units. The repository already hardcodes is_active = true,
+	// but we pass it explicitly for clarity and defense-in-depth.
+	active := true
+	units, _, err := s.academicUnitRepo.FindBySchoolID(ctx, schoolUUID, sharedrepo.ListFilters{IsActive: &active})
 	if err != nil {
 		return nil, fmt.Errorf("error fetching units: %w", err)
 	}
 
 	result := make([]dto.UnitInfoDTO, 0, len(units))
 	for _, u := range units {
+		// Defense-in-depth: skip inactive units even if the repo returned them
+		if !u.IsActive {
+			continue
+		}
 		result = append(result, dto.UnitInfoDTO{
 			ID:   u.ID.String(),
 			Name: u.Name,
@@ -991,7 +1026,7 @@ func (s *authService) GetSchoolUnits(ctx context.Context, schoolID string) (*dto
 
 	return &dto.SchoolUnitsResponse{
 		Units: result,
-		Total: total,
+		Total: int64(len(result)),
 	}, nil
 }
 
