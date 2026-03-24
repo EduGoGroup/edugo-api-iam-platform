@@ -145,7 +145,7 @@ func main() {
 		v1.POST("/auth/logout", c.AuthHandler.Logout)
 		v1.POST("/auth/switch-context", c.AuthHandler.SwitchContext)
 		v1.GET("/auth/contexts", c.AuthHandler.GetAvailableContexts)
-		v1.GET("/auth/contexts/schools/:school_id/units", c.AuthHandler.GetSchoolUnits)
+		v1.GET("/auth/contexts/schools/:school_id/units", ginmiddleware.RequirePermission(enum.PermissionContextBrowseUnits), c.AuthHandler.GetSchoolUnits)
 
 		// Roles
 		roles := v1.Group("/roles")

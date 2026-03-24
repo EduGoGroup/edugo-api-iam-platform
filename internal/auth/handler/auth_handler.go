@@ -287,35 +287,18 @@ func (h *AuthHandler) GetAvailableContexts(c *gin.Context) {
 }
 
 // GetSchoolUnits returns all academic units for a school.
-// Requires context:browse_units permission.
+// @Summary Get school units
+// @Description Returns all active academic units for the specified school
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Param school_id path string true "School ID (UUID)"
+// @Success 200 {object} dto.SchoolUnitsResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Router /auth/contexts/schools/{school_id}/units [get]
 func (h *AuthHandler) GetSchoolUnits(c *gin.Context) {
-	claims, _ := ginmiddleware.GetClaims(c)
-	if claims == nil || claims.ActiveContext == nil {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "unauthorized",
-			Message: "User not authenticated",
-			Code:    "NOT_AUTHENTICATED",
-		})
-		return
-	}
-
-	// Check permission
-	hasPermission := false
-	for _, p := range claims.ActiveContext.Permissions {
-		if p == "context:browse_units" {
-			hasPermission = true
-			break
-		}
-	}
-	if !hasPermission {
-		c.JSON(http.StatusForbidden, dto.ErrorResponse{
-			Error:   "forbidden",
-			Message: "Permission context:browse_units required",
-			Code:    "FORBIDDEN",
-		})
-		return
-	}
-
 	schoolID := c.Param("school_id")
 	if schoolID == "" {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{

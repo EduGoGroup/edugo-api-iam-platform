@@ -552,13 +552,26 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		}
 	}
 
-	// Set academic unit if provided in request, resolving its name
+	// Set academic unit if provided in request, validating it belongs to the target school
 	if academicUnitID != "" {
+		unitUUID, err := uuid.Parse(academicUnitID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid academic_unit_id: %w", err)
+		}
+		unit, err := s.academicUnitRepo.FindByID(ctx, unitUUID)
+		if err != nil || unit == nil {
+			return nil, fmt.Errorf("academic unit not found")
+		}
+		if unit.SchoolID.String() != targetSchoolID {
+			return nil, fmt.Errorf("academic unit does not belong to target school")
+		}
 		activeContext.AcademicUnitID = academicUnitID
-		if unitUUID, err := uuid.Parse(academicUnitID); err == nil {
-			if unit, err := s.academicUnitRepo.FindByID(ctx, unitUUID); err == nil && unit != nil {
-				activeContext.AcademicUnitName = unit.Name
-			}
+		activeContext.AcademicUnitName = unit.Name
+
+		// Recompute permissions with unit context
+		updatedPerms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, &schoolUUID, &unitUUID)
+		if err == nil {
+			activeContext.Permissions = updatedPerms
 		}
 	}
 
@@ -709,14 +722,26 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 
 		membershipKeys[schoolUnitKey{schoolID, unitID}] = true
 
-		// Find matching role from user_roles for this school
+		// Find matching role from user_roles — try (school, unit) first, then school-only, then global
 		roleName := ""
 		roleID := ""
-		for _, ur := range userRoles {
-			if ur.SchoolID != nil && ur.SchoolID.String() == schoolID {
-				roleID = ur.RoleID.String()
-				roleName = resolveRole(ur.RoleID)
-				break
+		if m.AcademicUnitID != nil {
+			for _, ur := range userRoles {
+				if ur.SchoolID != nil && ur.SchoolID.String() == schoolID &&
+					ur.AcademicUnitID != nil && ur.AcademicUnitID.String() == unitID {
+					roleID = ur.RoleID.String()
+					roleName = resolveRole(ur.RoleID)
+					break
+				}
+			}
+		}
+		if roleName == "" {
+			for _, ur := range userRoles {
+				if ur.SchoolID != nil && ur.SchoolID.String() == schoolID && ur.AcademicUnitID == nil {
+					roleID = ur.RoleID.String()
+					roleName = resolveRole(ur.RoleID)
+					break
+				}
 			}
 		}
 		// If no school-specific role, use global role
@@ -730,6 +755,27 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 			}
 		}
 
+		// Skip entries where no role was found
+		if roleName == "" {
+			continue
+		}
+
+		// Populate permissions for membership-based contexts
+		var schoolUUID *uuid.UUID
+		sid := m.SchoolID
+		schoolUUID = &sid
+
+		var unitUUID *uuid.UUID
+		if m.AcademicUnitID != nil {
+			unitUUID = m.AcademicUnitID
+		}
+
+		perms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, schoolUUID, unitUUID)
+		if err != nil {
+			s.logger.Warn("error fetching permissions for membership context",
+				"user_id", userUUID.String(), "school_id", schoolID, "error", err)
+		}
+
 		available = append(available, &dto.UserContextDTO{
 			RoleID:           roleID,
 			RoleName:         roleName,
@@ -737,6 +783,7 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 			SchoolName:       schoolName,
 			AcademicUnitID:   unitID,
 			AcademicUnitName: unitName,
+			Permissions:      perms,
 		})
 	}
 

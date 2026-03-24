@@ -78,7 +78,7 @@ type UserContextDTO struct {
 // SwitchContextRequest represents the request to switch school context
 type SwitchContextRequest struct {
 	SchoolID       string `json:"school_id" binding:"required,uuid"`
-	AcademicUnitID string `json:"academic_unit_id,omitempty"`
+	AcademicUnitID string `json:"academic_unit_id,omitempty" binding:"omitempty,uuid"`
 }
 
 // SwitchContextResponse represents the response after switching context
