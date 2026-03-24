@@ -3589,6 +3589,9 @@ const docTemplate = `{
                 "school_id"
             ],
             "properties": {
+                "academic_unit_id": {
+                    "type": "string"
+                },
                 "school_id": {
                     "type": "string"
                 }

@@ -608,6 +608,8 @@ definitions:
     type: object
   github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SwitchContextRequest:
     properties:
+      academic_unit_id:
+        type: string
       school_id:
         type: string
     required:
