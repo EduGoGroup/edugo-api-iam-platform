@@ -77,7 +77,8 @@ type UserContextDTO struct {
 
 // SwitchContextRequest represents the request to switch school context
 type SwitchContextRequest struct {
-	SchoolID string `json:"school_id" binding:"required,uuid"`
+	SchoolID       string `json:"school_id" binding:"required,uuid"`
+	AcademicUnitID string `json:"academic_unit_id,omitempty" binding:"omitempty,uuid"`
 }
 
 // SwitchContextResponse represents the response after switching context
@@ -91,17 +92,32 @@ type SwitchContextResponse struct {
 
 // ContextInfo represents the current context info (school + role)
 type ContextInfo struct {
-	SchoolID   string `json:"school_id"`
-	SchoolName string `json:"school_name,omitempty"`
-	Role       string `json:"role"`
-	UserID     string `json:"user_id"`
-	Email      string `json:"email"`
+	SchoolID         string `json:"school_id"`
+	SchoolName       string `json:"school_name,omitempty"`
+	AcademicUnitID   string `json:"academic_unit_id,omitempty"`
+	AcademicUnitName string `json:"academic_unit_name,omitempty"`
+	Role             string `json:"role"`
+	UserID           string `json:"user_id"`
+	Email            string `json:"email"`
 }
 
 // AvailableContextsResponse represents available contexts for a user
 type AvailableContextsResponse struct {
 	Current   *UserContextDTO   `json:"current"`
 	Available []*UserContextDTO `json:"available"`
+}
+
+// UnitInfoDTO represents an academic unit for context selection
+type UnitInfoDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// SchoolUnitsResponse represents the list of units for a school
+type SchoolUnitsResponse struct {
+	Units []UnitInfoDTO `json:"units"`
+	Total int64         `json:"total"`
 }
 
 // ErrorResponse represents an error response

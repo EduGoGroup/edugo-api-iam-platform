@@ -205,7 +205,7 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 		return
 	}
 
-	response, err := h.authService.SwitchContext(c.Request.Context(), userID, req.SchoolID)
+	response, err := h.authService.SwitchContext(c.Request.Context(), userID, req.SchoolID, req.AcademicUnitID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrNoMembership):
@@ -213,6 +213,12 @@ func (h *AuthHandler) SwitchContext(c *gin.Context) {
 				Error:   "forbidden",
 				Message: "No active membership in target school",
 				Code:    "NO_MEMBERSHIP",
+			})
+		case errors.Is(err, service.ErrUnauthorizedUnit):
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "forbidden",
+				Message: "No active membership in the requested academic unit",
+				Code:    "UNAUTHORIZED_UNIT",
 			})
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
@@ -279,6 +285,43 @@ func (h *AuthHandler) GetAvailableContexts(c *gin.Context) {
 			Error:   "internal_error",
 			Message: "Error fetching available contexts",
 			Code:    "CONTEXTS_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetSchoolUnits returns all academic units for a school.
+// @Summary Get school units
+// @Description Returns all active academic units for the specified school
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Param school_id path string true "School ID (UUID)"
+// @Success 200 {object} dto.SchoolUnitsResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Router /auth/contexts/schools/{school_id}/units [get]
+func (h *AuthHandler) GetSchoolUnits(c *gin.Context) {
+	schoolID := c.Param("school_id")
+	if schoolID == "" {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "bad_request",
+			Message: "school_id is required",
+			Code:    "MISSING_SCHOOL_ID",
+		})
+		return
+	}
+
+	response, err := h.authService.GetSchoolUnits(c.Request.Context(), schoolID)
+	if err != nil {
+		h.logger.Error("error fetching school units", "school_id", schoolID, "error", err)
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Error fetching school units",
+			Code:    "UNITS_ERROR",
 		})
 		return
 	}

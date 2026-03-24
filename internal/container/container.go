@@ -57,6 +57,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	userRepo := sharedPgRepo.NewPostgresUserRepository(db)
 	membershipRepo := sharedPgRepo.NewPostgresMembershipRepository(db)
 	schoolRepo := sharedPgRepo.NewPostgresSchoolRepository(db)
+	academicUnitRepo := sharedPgRepo.NewPostgresAcademicUnitRepository(db)
 
 	// IAM Repositories (local)
 	roleRepo := pgRepo.NewPostgresRoleRepository(db)
@@ -75,7 +76,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 
 	// Auth
 	c.TokenService = authService.NewTokenService(c.JWTManager, cfg.Auth.JWT.AccessTokenDuration, cfg.Auth.JWT.RefreshTokenDuration)
-	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, c.TokenService, log, auditLogger, loginAttemptRepo)
+	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, academicUnitRepo, c.TokenService, log, auditLogger, loginAttemptRepo)
 	c.AuthHandler = authHandler.NewAuthHandler(c.AuthService, log)
 	c.VerifyHandler = authHandler.NewVerifyHandler(c.TokenService)
 

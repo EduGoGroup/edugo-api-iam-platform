@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/dto"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/auth/model"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-infrastructure/postgres/entities"
@@ -222,6 +224,24 @@ func (m *mockSchoolRepo) ExistsByCode(_ context.Context, _ string) (bool, error)
 	return false, nil
 }
 
+type mockAcademicUnitRepo struct {
+	findByIDFn       func(ctx context.Context, id uuid.UUID) (*entities.AcademicUnit, error)
+	findBySchoolIDFn func(ctx context.Context, schoolID uuid.UUID, filters sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error)
+}
+
+func (m *mockAcademicUnitRepo) FindByID(ctx context.Context, id uuid.UUID) (*entities.AcademicUnit, error) {
+	if m.findByIDFn != nil {
+		return m.findByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+func (m *mockAcademicUnitRepo) FindBySchoolID(ctx context.Context, schoolID uuid.UUID, filters sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error) {
+	if m.findBySchoolIDFn != nil {
+		return m.findBySchoolIDFn(ctx, schoolID, filters)
+	}
+	return nil, 0, nil
+}
+
 type mockLoginAttemptRepo struct {
 	createFn           func(ctx context.Context, attempt *model.LoginAttempt) error
 	countFailedSinceFn func(ctx context.Context, identifier string, since time.Time) (int64, error)
@@ -296,6 +316,7 @@ func TestLogin_Success_GlobalRole(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -346,6 +367,7 @@ func TestLogin_Success_SchoolRole(t *testing.T) {
 				return &entities.School{ID: schoolID, Name: "Test School"}, nil
 			},
 		},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -373,6 +395,7 @@ func TestLogin_InvalidPassword(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -395,6 +418,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -420,6 +444,7 @@ func TestLogin_InactiveUser(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -444,6 +469,7 @@ func TestLogin_RateLimited(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -476,6 +502,7 @@ func TestLogin_NoRoles(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -514,6 +541,7 @@ func TestLogin_AuditLogRecorded(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{
@@ -560,6 +588,7 @@ func TestLogin_EmailNormalized(t *testing.T) {
 		},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
@@ -601,13 +630,14 @@ func TestSwitchContext_GlobalRole(t *testing.T) {
 				return &entities.School{ID: schoolID, Name: "Target School"}, nil
 			},
 		},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
 	)
 
-	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), schoolID.String())
+	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), schoolID.String(), "")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, "super_admin", resp.Context.Role)
@@ -631,13 +661,165 @@ func TestSwitchContext_NoMembershipNoGlobalRole(t *testing.T) {
 		&mockRoleRepository{},
 		&mockMembershipRepo{},
 		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
 		newTestTokenService(),
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
 	)
 
-	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), uuid.New().String())
+	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), uuid.New().String(), "")
 	assert.Nil(t, resp)
 	assert.ErrorIs(t, err, ErrNoMembership)
+}
+
+// ─── GetSchoolUnits Tests ──────────────────────────────────────────────────
+
+func TestGetSchoolUnits_InvalidSchoolID(t *testing.T) {
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.GetSchoolUnits(context.Background(), "not-a-uuid")
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid school_id")
+}
+
+func TestGetSchoolUnits_Success(t *testing.T) {
+	schoolID := uuid.New()
+	unit1ID := uuid.New()
+	unit2ID := uuid.New()
+
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{
+			findBySchoolIDFn: func(_ context.Context, sid uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error) {
+				assert.Equal(t, schoolID, sid)
+				return []*entities.AcademicUnit{
+					{ID: unit1ID, SchoolID: schoolID, Name: "Primary", Type: "sede", IsActive: true},
+					{ID: unit2ID, SchoolID: schoolID, Name: "Secondary", Type: "sede", IsActive: true},
+				}, 2, nil
+			},
+		},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.GetSchoolUnits(context.Background(), schoolID.String())
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, int64(2), resp.Total)
+	assert.Len(t, resp.Units, 2)
+	assert.Equal(t, "Primary", resp.Units[0].Name)
+	assert.Equal(t, "Secondary", resp.Units[1].Name)
+}
+
+func TestGetSchoolUnits_RepoError(t *testing.T) {
+	schoolID := uuid.New()
+
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{
+			findBySchoolIDFn: func(_ context.Context, _ uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.AcademicUnit, int64, error) {
+				return nil, 0, fmt.Errorf("database connection error")
+			},
+		},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.GetSchoolUnits(context.Background(), schoolID.String())
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error fetching units")
+}
+
+// ─── GetAvailableContexts Tests ────────────────────────────────────────────
+
+func TestGetAvailableContexts_MembershipWithUnit(t *testing.T) {
+	userID := uuid.MustParse("00000000-0000-0000-0000-000000000099")
+	schoolID := uuid.New()
+	unitID := uuid.New()
+	roleID := uuid.New()
+
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{
+			findByUserFn: func(_ context.Context, _ uuid.UUID) ([]*entities.UserRole, error) {
+				return []*entities.UserRole{
+					{RoleID: roleID, UserID: userID, SchoolID: &schoolID},
+				}, nil
+			},
+			getUserPermissionsFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) ([]string, error) {
+				return []string{"materials:read", "assessments:read"}, nil
+			},
+		},
+		&mockRoleRepository{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.Role, error) {
+				return &entities.Role{ID: roleID, Name: "teacher"}, nil
+			},
+		},
+		&mockMembershipRepo{
+			findByUserFn: func(_ context.Context, _ uuid.UUID, _ sharedrepo.ListFilters) ([]*entities.Membership, int64, error) {
+				return []*entities.Membership{
+					{SchoolID: schoolID, AcademicUnitID: &unitID, IsActive: true},
+				}, 1, nil
+			},
+		},
+		&mockSchoolRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.School, error) {
+				return &entities.School{ID: schoolID, Name: "Test School"}, nil
+			},
+		},
+		&mockAcademicUnitRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.AcademicUnit, error) {
+				return &entities.AcademicUnit{ID: unitID, SchoolID: schoolID, Name: "Primary"}, nil
+			},
+		},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.GetAvailableContexts(context.Background(), userID.String(), nil)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, resp.Available)
+
+	// Find the membership-based context with the unit
+	var found *dto.UserContextDTO
+	for _, ctx := range resp.Available {
+		if ctx.AcademicUnitID == unitID.String() {
+			found = ctx
+			break
+		}
+	}
+	require.NotNil(t, found, "should have a context with the academic unit")
+	assert.Equal(t, "teacher", found.RoleName)
+	assert.Equal(t, schoolID.String(), found.SchoolID)
+	assert.Equal(t, "Primary", found.AcademicUnitName)
+	assert.NotEmpty(t, found.Permissions, "membership-based context should have permissions populated")
 }

@@ -321,6 +321,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/contexts/schools/{school_id}/units": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all active academic units for the specified school",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get school units",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "School ID (UUID)",
+                        "name": "school_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolUnitsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticate a user and return access/refresh tokens",
@@ -3583,13 +3635,44 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SchoolUnitsResponse": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "units": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UnitInfoDTO"
+                    }
+                }
+            }
+        },
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.SwitchContextRequest": {
             "type": "object",
             "required": [
                 "school_id"
             ],
             "properties": {
+                "academic_unit_id": {
+                    "type": "string"
+                },
                 "school_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_EduGoGroup_edugo-api-iam-platform_internal_auth_dto.UnitInfoDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
