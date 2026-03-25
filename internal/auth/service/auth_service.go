@@ -397,6 +397,10 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 				}
 			}
 			activeContext = globalContext
+		} else if targetSchoolID != nil {
+			// Fallback: global context build failed (transient error, missing role record),
+			// try school-scoped context so refresh doesn't fail for users with dual roles.
+			activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
 		}
 	} else if targetSchoolID != nil {
 		activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
