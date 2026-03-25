@@ -200,6 +200,152 @@ func TestMenuService_GetMenuForUser(t *testing.T) {
 	})
 }
 
+// ─── computeAccessMode (función pura interna) ────────────────────────────────
+
+func TestComputeAccessMode(t *testing.T) {
+	t.Run("retorna edit cuando el usuario tiene permiso de escritura", func(t *testing.T) {
+		resourcePerms := []string{"dashboard:read", "dashboard:update"}
+		userPermSet := map[string]bool{"dashboard:read": true, "dashboard:update": true}
+		mode := computeAccessMode(resourcePerms, userPermSet)
+		if mode != "edit" {
+			t.Errorf("esperaba 'edit', obtuvo '%s'", mode)
+		}
+	})
+
+	t.Run("retorna view cuando el usuario solo tiene permiso de lectura", func(t *testing.T) {
+		resourcePerms := []string{"dashboard:read", "dashboard:update"}
+		userPermSet := map[string]bool{"dashboard:read": true}
+		mode := computeAccessMode(resourcePerms, userPermSet)
+		if mode != "view" {
+			t.Errorf("esperaba 'view', obtuvo '%s'", mode)
+		}
+	})
+
+	t.Run("retorna view con slice de permisos vacío", func(t *testing.T) {
+		mode := computeAccessMode([]string{}, map[string]bool{})
+		if mode != "view" {
+			t.Errorf("esperaba 'view', obtuvo '%s'", mode)
+		}
+	})
+
+	t.Run("reconoce todas las acciones de escritura", func(t *testing.T) {
+		actions := []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export"}
+		for _, action := range actions {
+			perm := "resource:" + action
+			mode := computeAccessMode([]string{perm}, map[string]bool{perm: true})
+			if mode != "edit" {
+				t.Errorf("acción '%s' debería ser 'edit', obtuvo '%s'", action, mode)
+			}
+		}
+	})
+
+	t.Run("retorna view para acciones de solo lectura", func(t *testing.T) {
+		readActions := []string{"read", "browse", "list", "view"}
+		for _, action := range readActions {
+			perm := "resource:" + action
+			mode := computeAccessMode([]string{perm}, map[string]bool{perm: true})
+			if mode != "view" {
+				t.Errorf("acción '%s' debería ser 'view', obtuvo '%s'", action, mode)
+			}
+		}
+	})
+}
+
+// ─── access_mode en GetMenuForUser ────────────────────────────────────────────
+
+func TestMenuService_AccessMode(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("access_mode es edit cuando usuario tiene permisos de escritura", func(t *testing.T) {
+		dashID := uuid.New()
+		resources := []*entities.Resource{
+			{ID: dashID, Key: "dashboard", DisplayName: "Dashboard", Scope: "platform", IsMenuVisible: true},
+		}
+		resourceRepo := &mockResourceRepo{
+			findMenuVisibleFn: func(ctx context.Context) ([]*entities.Resource, error) { return resources, nil },
+		}
+		screenRepo := &mockResourceScreenRepo{
+			getByResourceKeyFn: func(ctx context.Context, key string) ([]*entities.ResourceScreen, error) { return nil, nil },
+		}
+		svc := newMenuService(resourceRepo, screenRepo)
+		resp, err := svc.GetMenuForUser(ctx, []string{"dashboard:read", "dashboard:update"})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Items[0].AccessMode != "edit" {
+			t.Errorf("esperaba access_mode 'edit', obtuvo '%s'", resp.Items[0].AccessMode)
+		}
+	})
+
+	t.Run("access_mode es view cuando usuario solo tiene permiso de lectura", func(t *testing.T) {
+		dashID := uuid.New()
+		resources := []*entities.Resource{
+			{ID: dashID, Key: "dashboard", DisplayName: "Dashboard", Scope: "platform", IsMenuVisible: true},
+		}
+		resourceRepo := &mockResourceRepo{
+			findMenuVisibleFn: func(ctx context.Context) ([]*entities.Resource, error) { return resources, nil },
+		}
+		screenRepo := &mockResourceScreenRepo{
+			getByResourceKeyFn: func(ctx context.Context, key string) ([]*entities.ResourceScreen, error) { return nil, nil },
+		}
+		svc := newMenuService(resourceRepo, screenRepo)
+		resp, err := svc.GetMenuForUser(ctx, []string{"dashboard:read"})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Items[0].AccessMode != "view" {
+			t.Errorf("esperaba access_mode 'view', obtuvo '%s'", resp.Items[0].AccessMode)
+		}
+	})
+
+	t.Run("GetFullMenu siempre devuelve access_mode edit", func(t *testing.T) {
+		resources := []*entities.Resource{
+			{ID: uuid.New(), Key: "dashboard", DisplayName: "Dashboard", Scope: "platform", IsMenuVisible: true},
+		}
+		resourceRepo := &mockResourceRepo{
+			findMenuVisibleFn: func(ctx context.Context) ([]*entities.Resource, error) { return resources, nil },
+		}
+		screenRepo := &mockResourceScreenRepo{
+			getByResourceKeyFn: func(ctx context.Context, key string) ([]*entities.ResourceScreen, error) { return nil, nil },
+		}
+		svc := newMenuService(resourceRepo, screenRepo)
+		resp, err := svc.GetFullMenu(ctx)
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Items[0].AccessMode != "edit" {
+			t.Errorf("esperaba access_mode 'edit', obtuvo '%s'", resp.Items[0].AccessMode)
+		}
+	})
+
+	t.Run("padre hereda edit si algún hijo tiene edit", func(t *testing.T) {
+		parentID := uuid.New()
+		childID := uuid.New()
+		resources := []*entities.Resource{
+			{ID: parentID, Key: "admin", DisplayName: "Admin", Scope: "platform", IsMenuVisible: true},
+			{ID: childID, Key: "admin.users", DisplayName: "Users", ParentID: &parentID, Scope: "platform", IsMenuVisible: true},
+		}
+		resourceRepo := &mockResourceRepo{
+			findMenuVisibleFn: func(ctx context.Context) ([]*entities.Resource, error) { return resources, nil },
+		}
+		screenRepo := &mockResourceScreenRepo{
+			getByResourceKeyFn: func(ctx context.Context, key string) ([]*entities.ResourceScreen, error) { return nil, nil },
+		}
+		svc := newMenuService(resourceRepo, screenRepo)
+		// admin:read (view) + admin.users:read + admin.users:create (edit)
+		resp, err := svc.GetMenuForUser(ctx, []string{"admin:read", "admin.users:read", "admin.users:create"})
+		if err != nil {
+			t.Fatalf("error inesperado: %v", err)
+		}
+		if resp.Items[0].AccessMode != "edit" {
+			t.Errorf("padre debería heredar 'edit' del hijo, obtuvo '%s'", resp.Items[0].AccessMode)
+		}
+		if resp.Items[0].Children[0].AccessMode != "edit" {
+			t.Errorf("hijo debería ser 'edit', obtuvo '%s'", resp.Items[0].Children[0].AccessMode)
+		}
+	})
+}
+
 // ─── GetFullMenu ──────────────────────────────────────────────────────────────
 
 func TestMenuService_GetFullMenu(t *testing.T) {

@@ -7,6 +7,7 @@ type MenuItemDTO struct {
 	Icon        string            `json:"icon,omitempty"`
 	Scope       string            `json:"scope"`
 	SortOrder   int               `json:"sort_order"`
+	AccessMode  string            `json:"access_mode"`
 	Permissions []string          `json:"permissions,omitempty"`
 	Screens     map[string]string `json:"screens,omitempty"`
 	Children    []MenuItemDTO     `json:"children"`

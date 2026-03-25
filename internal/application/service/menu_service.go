@@ -75,8 +75,13 @@ func (s *menuService) GetMenuForUser(ctx context.Context, permissions []string) 
 		}
 	}
 
+	userPermSet := make(map[string]bool, len(permissions))
+	for _, p := range permissions {
+		userPermSet[p] = true
+	}
+
 	screensByResource := s.loadScreenMappings(ctx, allResources)
-	items := buildMenuTree(allResources, visibleKeys, permsByResource, screensByResource, nil)
+	items := buildMenuTree(allResources, visibleKeys, permsByResource, screensByResource, userPermSet, nil)
 
 	return &dto.MenuResponse{Items: items}, nil
 }
@@ -93,7 +98,7 @@ func (s *menuService) GetFullMenu(ctx context.Context) (*dto.MenuResponse, error
 	}
 
 	screensByResource := s.loadScreenMappings(ctx, allResources)
-	items := buildMenuTree(allResources, allKeys, nil, screensByResource, nil)
+	items := buildMenuTree(allResources, allKeys, nil, screensByResource, nil, nil)
 
 	return &dto.MenuResponse{Items: items}, nil
 }
@@ -120,6 +125,33 @@ func (s *menuService) loadScreenMappings(ctx context.Context, resources []*entit
 	return result
 }
 
+// writeActions lists permission actions that indicate edit (write) access.
+var writeActions = []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export"}
+
+// computeAccessMode determines whether a menu item should be rendered in
+// "edit" or "view" mode based on the user's permissions for that resource.
+func computeAccessMode(resourcePerms []string, userPermSet map[string]bool) string {
+	for _, perm := range resourcePerms {
+		if !userPermSet[perm] {
+			continue
+		}
+		parts := strings.SplitN(perm, ":", 2)
+		if len(parts) >= 2 {
+			action := parts[1]
+			// Strip :own suffix if present (e.g. "update:own" → "update")
+			if idx := strings.Index(action, ":"); idx >= 0 {
+				action = action[:idx]
+			}
+			for _, wa := range writeActions {
+				if action == wa {
+					return "edit"
+				}
+			}
+		}
+	}
+	return "view"
+}
+
 func extractResourceKeys(permissions []string) []string {
 	seen := make(map[string]bool)
 	var keys []string
@@ -138,7 +170,7 @@ func extractResourceKeys(permissions []string) []string {
 	return keys
 }
 
-func buildMenuTree(resources []*entities.Resource, visibleKeys map[string]bool, permsByResource map[string][]string, screensByResource map[string]map[string]string, parentID *uuid.UUID) []dto.MenuItemDTO {
+func buildMenuTree(resources []*entities.Resource, visibleKeys map[string]bool, permsByResource map[string][]string, screensByResource map[string]map[string]string, userPermSet map[string]bool, parentID *uuid.UUID) []dto.MenuItemDTO {
 	var items []dto.MenuItemDTO
 	for _, r := range resources {
 		if !visibleKeys[r.Key] {
@@ -168,9 +200,26 @@ func buildMenuTree(resources []*entities.Resource, visibleKeys map[string]bool, 
 			item.Screens = screens
 		}
 
-		item.Children = buildMenuTree(resources, visibleKeys, permsByResource, screensByResource, &r.ID)
+		item.Children = buildMenuTree(resources, visibleKeys, permsByResource, screensByResource, userPermSet, &r.ID)
 		if item.Children == nil {
 			item.Children = []dto.MenuItemDTO{}
+		}
+
+		// Compute access_mode based on user permissions for this resource.
+		// For GetFullMenu (userPermSet == nil) default to "edit".
+		if userPermSet != nil && permsByResource != nil {
+			item.AccessMode = computeAccessMode(permsByResource[r.Key], userPermSet)
+			// If any child has "edit", propagate up to parent
+			if item.AccessMode == "view" {
+				for _, child := range item.Children {
+					if child.AccessMode == "edit" {
+						item.AccessMode = "edit"
+						break
+					}
+				}
+			}
+		} else {
+			item.AccessMode = "edit"
 		}
 
 		items = append(items, item)
