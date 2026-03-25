@@ -229,13 +229,22 @@ func TestComputeAccessMode(t *testing.T) {
 	})
 
 	t.Run("reconoce todas las acciones de escritura", func(t *testing.T) {
-		actions := []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export"}
+		actions := []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export", "write"}
 		for _, action := range actions {
 			perm := "resource:" + action
 			mode := computeAccessMode([]string{perm}, map[string]bool{perm: true})
 			if mode != "edit" {
 				t.Errorf("acción '%s' debería ser 'edit', obtuvo '%s'", action, mode)
 			}
+		}
+	})
+
+	t.Run("write action returns edit", func(t *testing.T) {
+		resourcePerms := []string{"resource:write"}
+		userPermSet := map[string]bool{"resource:write": true}
+		mode := computeAccessMode(resourcePerms, userPermSet)
+		if mode != "edit" {
+			t.Errorf("esperaba 'edit', obtuvo '%s'", mode)
 		}
 	})
 

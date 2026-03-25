@@ -126,7 +126,7 @@ func (s *menuService) loadScreenMappings(ctx context.Context, resources []*entit
 }
 
 // writeActions lists permission actions that indicate edit (write) access.
-var writeActions = []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export"}
+var writeActions = []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export", "write"}
 
 // computeAccessMode determines whether a menu item should be rendered in
 // "edit" or "view" mode based on the user's permissions for that resource.
