@@ -598,10 +598,14 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		activeContext.AcademicUnitID = academicUnitID
 		activeContext.AcademicUnitName = unit.Name
 
-		// Recompute permissions with unit context
-		updatedPerms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, &schoolUUID, &unitUUID)
-		if err == nil {
-			activeContext.Permissions = updatedPerms
+		// Recompute permissions with unit context only for membership-based users.
+		// Global roles (e.g. super_admin) have no membership — their permissions
+		// were already resolved without school/unit filter and must not be overwritten.
+		if membership != nil {
+			updatedPerms, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, &schoolUUID, &unitUUID)
+			if err == nil {
+				activeContext.Permissions = updatedPerms
+			}
 		}
 	}
 
