@@ -823,3 +823,221 @@ func TestGetAvailableContexts_MembershipWithUnit(t *testing.T) {
 	assert.Equal(t, "Primary", found.AcademicUnitName)
 	assert.NotEmpty(t, found.Permissions, "membership-based context should have permissions populated")
 }
+
+// ─── RefreshToken Tests ─────────────────────────────────────────────────────
+
+func TestRefreshToken_GlobalRole_Success(t *testing.T) {
+	user := newTestUser()
+	role := newTestRole("super_admin")
+	schoolID := uuid.New()
+	ts := newTestTokenService()
+
+	// Generate a valid refresh token with schoolID embedded
+	refreshJWT, _, err := ts.GenerateRefreshJWT(user.ID.String(), user.Email, schoolID.String())
+	require.NoError(t, err)
+
+	svc := NewAuthService(
+		&mockUserRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.User, error) {
+				return user, nil
+			},
+		},
+		&mockUserRoleRepo{
+			findByUserFn: func(_ context.Context, _ uuid.UUID) ([]*entities.UserRole, error) {
+				// Global role: SchoolID is nil
+				return []*entities.UserRole{{RoleID: role.ID, UserID: user.ID, SchoolID: nil}}, nil
+			},
+			findByUserInContextFn: func(_ context.Context, _ uuid.UUID, sid *uuid.UUID, _ *uuid.UUID) ([]*entities.UserRole, error) {
+				if sid == nil {
+					return []*entities.UserRole{{RoleID: role.ID, UserID: user.ID}}, nil
+				}
+				return nil, nil
+			},
+			getUserPermissionsFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) ([]string, error) {
+				return []string{"users:read", "users:write", "schools:read"}, nil
+			},
+		},
+		&mockRoleRepository{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.Role, error) {
+				return role, nil
+			},
+		},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{
+			findByIDFn: func(_ context.Context, id uuid.UUID) (*entities.School, error) {
+				if id == schoolID {
+					return &entities.School{ID: schoolID, Name: "Target School"}, nil
+				}
+				return nil, nil
+			},
+		},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.NotEmpty(t, resp.AccessToken)
+	assert.NotEmpty(t, resp.RefreshToken)
+	assert.Equal(t, "Bearer", resp.TokenType)
+	require.NotNil(t, resp.ActiveContext)
+	assert.Equal(t, "super_admin", resp.ActiveContext.RoleName)
+	assert.Equal(t, schoolID.String(), resp.ActiveContext.SchoolID)
+	assert.Equal(t, "Target School", resp.ActiveContext.SchoolName)
+}
+
+func TestRefreshToken_SchoolRole_Success(t *testing.T) {
+	user := newTestUser()
+	role := newTestRole("teacher")
+	schoolID := uuid.New()
+	ts := newTestTokenService()
+
+	refreshJWT, _, err := ts.GenerateRefreshJWT(user.ID.String(), user.Email, schoolID.String())
+	require.NoError(t, err)
+
+	svc := NewAuthService(
+		&mockUserRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.User, error) {
+				return user, nil
+			},
+		},
+		&mockUserRoleRepo{
+			findByUserFn: func(_ context.Context, _ uuid.UUID) ([]*entities.UserRole, error) {
+				// School-scoped role: SchoolID is set
+				return []*entities.UserRole{{RoleID: role.ID, UserID: user.ID, SchoolID: &schoolID}}, nil
+			},
+			findByUserInContextFn: func(_ context.Context, _ uuid.UUID, sid *uuid.UUID, _ *uuid.UUID) ([]*entities.UserRole, error) {
+				if sid != nil && *sid == schoolID {
+					return []*entities.UserRole{{RoleID: role.ID, UserID: user.ID, SchoolID: &schoolID}}, nil
+				}
+				return nil, nil
+			},
+			getUserPermissionsFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) ([]string, error) {
+				return []string{"materials:read", "assessments:read"}, nil
+			},
+		},
+		&mockRoleRepository{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.Role, error) {
+				return role, nil
+			},
+		},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{
+			findByIDFn: func(_ context.Context, id uuid.UUID) (*entities.School, error) {
+				if id == schoolID {
+					return &entities.School{ID: schoolID, Name: "Test School"}, nil
+				}
+				return nil, nil
+			},
+		},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.NotEmpty(t, resp.AccessToken)
+	assert.NotEmpty(t, resp.RefreshToken)
+	assert.Equal(t, "Bearer", resp.TokenType)
+	require.NotNil(t, resp.ActiveContext)
+	assert.Equal(t, "teacher", resp.ActiveContext.RoleName)
+	assert.Equal(t, schoolID.String(), resp.ActiveContext.SchoolID)
+}
+
+func TestRefreshToken_InvalidToken(t *testing.T) {
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.RefreshToken(context.Background(), "garbage.jwt.string")
+	assert.Nil(t, resp)
+	assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+}
+
+func TestRefreshToken_InactiveUser(t *testing.T) {
+	user := newTestUser()
+	user.IsActive = false
+	ts := newTestTokenService()
+
+	refreshJWT, _, err := ts.GenerateRefreshJWT(user.ID.String(), user.Email, "")
+	require.NoError(t, err)
+
+	svc := NewAuthService(
+		&mockUserRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.User, error) {
+				return user, nil
+			},
+		},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
+	assert.Nil(t, resp)
+	assert.ErrorIs(t, err, ErrUserInactive)
+}
+
+func TestRefreshToken_NoRoles(t *testing.T) {
+	user := newTestUser()
+	schoolID := uuid.New()
+	ts := newTestTokenService()
+
+	refreshJWT, _, err := ts.GenerateRefreshJWT(user.ID.String(), user.Email, schoolID.String())
+	require.NoError(t, err)
+
+	svc := NewAuthService(
+		&mockUserRepo{
+			findByIDFn: func(_ context.Context, _ uuid.UUID) (*entities.User, error) {
+				return user, nil
+			},
+		},
+		&mockUserRoleRepo{
+			findByUserFn: func(_ context.Context, _ uuid.UUID) ([]*entities.UserRole, error) {
+				return []*entities.UserRole{}, nil // no roles at all
+			},
+			findByUserInContextFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) ([]*entities.UserRole, error) {
+				return nil, nil
+			},
+			getUserPermissionsFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ *uuid.UUID) ([]string, error) {
+				return []string{}, nil
+			},
+		},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+	)
+
+	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no assigned roles")
+}
