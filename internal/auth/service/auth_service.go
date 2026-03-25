@@ -369,24 +369,43 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	// 4. Rebuild RBAC context.
-	// Try global context first (covers super_admin and other global roles),
-	// then fall back to school-scoped context.
+	// Use a single FindByUser query to determine role scope in-memory,
+	// then call buildUserContext only for the correct scope (global or school).
 	var activeContext *auth.UserContext
-	globalContext := s.buildUserContext(ctx, userUUID, nil)
-	if globalContext != nil {
-		// User has a global role — pin the target school if available
-		if targetSchoolID != nil {
-			globalContext.SchoolID = targetSchoolID.String()
-			school, err := s.schoolRepo.FindByID(ctx, *targetSchoolID)
-			if err == nil && school != nil {
-				globalContext.SchoolName = school.Name
-			}
+
+	allRoles, rolesErr := s.userRoleRepo.FindByUser(ctx, userUUID)
+	if rolesErr != nil {
+		return nil, fmt.Errorf("error fetching user roles: %w", rolesErr)
+	}
+
+	hasGlobalRole := false
+	for _, r := range allRoles {
+		if r.SchoolID == nil {
+			hasGlobalRole = true
+			break
 		}
-		activeContext = globalContext
+	}
+
+	if hasGlobalRole {
+		globalContext := s.buildUserContext(ctx, userUUID, nil)
+		if globalContext != nil {
+			if targetSchoolID != nil {
+				globalContext.SchoolID = targetSchoolID.String()
+				school, err := s.schoolRepo.FindByID(ctx, *targetSchoolID)
+				if err == nil && school != nil {
+					globalContext.SchoolName = school.Name
+				}
+			}
+			activeContext = globalContext
+		} else if targetSchoolID != nil {
+			// Fallback: global context build failed (transient error, missing role record),
+			// try school-scoped context so refresh doesn't fail for users with dual roles.
+			activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
+		}
 	} else if targetSchoolID != nil {
-		// No global role — try school-scoped context
 		activeContext = s.buildUserContext(ctx, userUUID, targetSchoolID)
 	}
+
 	if activeContext == nil {
 		return nil, fmt.Errorf("user has no assigned roles")
 	}

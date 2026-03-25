@@ -51,7 +51,7 @@ type AuthConfig struct {
 type JWTConfig struct {
 	Secret               string        `env:"SECRET,required"`
 	Issuer               string        `env:"ISSUER"                 envDefault:"edugo-central"`
-	AccessTokenDuration  time.Duration `env:"ACCESS_TOKEN_DURATION"  envDefault:"15m"`
+	AccessTokenDuration  time.Duration `env:"ACCESS_TOKEN_DURATION"  envDefault:"60m"`
 	RefreshTokenDuration time.Duration `env:"REFRESH_TOKEN_DURATION" envDefault:"168h"`
 }
 
