@@ -22,12 +22,12 @@ import (
 
 // Sentinel errors for auth operations
 var (
-	ErrInvalidCredentials   = errors.New("invalid credentials")
-	ErrUserNotFound         = errors.New("user not found")
-	ErrUserInactive         = errors.New("user inactive")
-	ErrInvalidRefreshToken  = errors.New("invalid refresh token")
-	ErrNoMembership         = errors.New("no active membership in target school")
-	ErrInvalidSchoolID      = errors.New("invalid school_id")
+	ErrInvalidCredentials         = errors.New("invalid credentials")
+	ErrUserNotFound               = errors.New("user not found")
+	ErrUserInactive               = errors.New("user inactive")
+	ErrInvalidRefreshToken        = errors.New("invalid refresh token")
+	ErrNoMembership               = errors.New("no active membership in target school")
+	ErrInvalidSchoolID            = errors.New("invalid school_id")
 	ErrUnauthorizedUnit           = errors.New("user has no active membership in the requested academic unit")
 	ErrTooManyLoginAttempts       = errors.New("too many login attempts, try again later")
 	ErrAcademicUnitNotFound       = errors.New("academic unit not found")
@@ -597,15 +597,22 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		if err != nil {
 			return nil, fmt.Errorf("error verifying unit membership: %w", err)
 		}
-		hasUnitMembership := false
+		hasUnitAccess := false
 		for _, m := range userMemberships {
-			if m.SchoolID == schoolUUID && m.AcademicUnitID != nil && *m.AcademicUnitID == unitUUID && m.IsActive {
-				hasUnitMembership = true
-				break
+			if m.SchoolID == schoolUUID && m.IsActive {
+				if m.AcademicUnitID == nil {
+					// School-level membership grants access to all units in the school
+					hasUnitAccess = true
+					break
+				}
+				if *m.AcademicUnitID == unitUUID {
+					hasUnitAccess = true
+					break
+				}
 			}
 		}
 		// Global-role users (e.g. super_admin) may not have a membership — allow them through
-		if !hasUnitMembership && membership != nil {
+		if !hasUnitAccess && membership != nil {
 			s.logger.Warn("switch-context: user has no membership in requested unit",
 				"user_id", userID,
 				"school_id", targetSchoolID,

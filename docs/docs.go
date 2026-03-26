@@ -2919,6 +2919,9 @@ const docTemplate = `{
         "github_com_EduGoGroup_edugo-api-iam-platform_internal_application_dto.MenuItemDTO": {
             "type": "object",
             "properties": {
+                "access_mode": {
+                    "type": "string"
+                },
                 "children": {
                     "type": "array",
                     "items": {
