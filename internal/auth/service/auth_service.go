@@ -117,7 +117,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			AttemptedAt: time.Now(),
 		}
 		if err := s.loginAttemptRepo.Create(c, attempt); err != nil {
-			s.logger.Warn("error recording login attempt", "email", email, "error", err)
+			log.Warn("error recording login attempt", "email", email, "error", err)
 		}
 	}
 
@@ -142,7 +142,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 
 	// Check rate limit
 	if rateLimitErr != nil {
-		s.logger.Warn("error checking login rate limit", "email", email, "error", rateLimitErr)
+		log.Warn("error checking login rate limit", "email", email, "error", rateLimitErr)
 	}
 	if failedCount >= 5 {
 		log.Warn("login rate limited", "email", email, "failed_count", failedCount, "ip", clientIP)
@@ -171,7 +171,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {
-		s.logger.Warn("login attempt with non-existent email", "email", email)
+		log.Warn("login attempt with non-existent email", "email", email)
 		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorEmail:   email,
@@ -188,7 +188,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 
 	// 2. Verify user is active
 	if !user.IsActive {
-		s.logger.Warn("login attempt with inactive user", "email", email, "user_id", user.ID.String())
+		log.Warn("login attempt with inactive user", "email", email, "user_id", user.ID.String())
 		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorID:      user.ID.String(),
@@ -206,7 +206,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 
 	// 3. Verify password
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
-		s.logger.Warn("incorrect password", "email", email)
+		log.Warn("incorrect password", "email", email)
 		recordAttempt(ctx, false)
 		_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 			ActorID:      user.ID.String(),
@@ -258,7 +258,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	}
 
 	if activeContext == nil {
-		s.logger.Error("no RBAC context found for user", "user_id", user.ID.String(), "email", user.Email)
+		log.Error("no RBAC context found for user", "user_id", user.ID.String(), "email", user.Email)
 		recordAttempt(ctx, false)
 		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, fmt.Errorf("user has no assigned roles")
@@ -328,7 +328,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		defer cancel()
 		user.UpdatedAt = time.Now()
 		if err := s.userRepo.Update(bgCtx, user); err != nil {
-			s.logger.Warn("error updating last login", "error", err)
+			log.Warn("error updating last login", "error", err)
 		}
 	}()
 
@@ -387,7 +387,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		sid, parseErr := uuid.Parse(schoolIDFromToken)
 		if parseErr != nil {
 			// Signed JWT contains a non-parseable schoolID — reject to avoid silent context switch.
-			s.logger.Warn("invalid schoolID in refresh token", "user_id", userID, "school_id", schoolIDFromToken)
+			log.Warn("invalid schoolID in refresh token", "user_id", userID, "school_id", schoolIDFromToken)
 			authMetrics.RecordTokenRefresh(false, time.Since(start))
 			return nil, ErrInvalidRefreshToken
 		}
