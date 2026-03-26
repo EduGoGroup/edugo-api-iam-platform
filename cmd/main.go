@@ -45,12 +45,13 @@ var (
 // @name Authorization
 // @description Type "Bearer" followed by a space and the JWT token. Example: "Bearer eyJhbGci..."
 func main() {
-	log.Printf("EduGo API IAM Platform starting... (Version: %s, Build: %s)", Version, BuildTime)
+	slog.Info("EduGo API IAM Platform starting...", "version", Version, "build", BuildTime)
 
 	// 1. Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
+		slog.Error("Error loading configuration", "error", err)
+		os.Exit(1)
 	}
 
 	// 2. Connect to PostgreSQL via GORM
@@ -63,7 +64,8 @@ func main() {
 
 	pgxConfig, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		log.Fatalf("Error parsing PostgreSQL DSN: %v", err)
+		slog.Error("Error parsing PostgreSQL DSN", "error", err)
+		os.Exit(1)
 	}
 	pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	pgxConfig.RuntimeParams["search_path"] = "auth,iam,academic,ui_config,public"
@@ -86,15 +88,17 @@ func main() {
 		PrepareStmt: false,
 	})
 	if err != nil {
-		log.Fatalf("Error connecting to PostgreSQL via GORM: %v", err)
+		slog.Error("Error connecting to PostgreSQL via GORM", "error", err)
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := sqlDB.PingContext(ctx); err != nil {
-		log.Fatalf("Error pinging PostgreSQL: %v", err)
+		slog.Error("Error pinging PostgreSQL", "error", err)
+		os.Exit(1)
 	}
-	log.Println("PostgreSQL connected successfully via GORM")
+	slog.Info("PostgreSQL connected successfully via GORM")
 
 	// 3. Initialize logger
 	slogLogger := logger.NewSlogProvider(logger.SlogConfig{
@@ -115,7 +119,8 @@ func main() {
 	docs.SwaggerInfo.Host = fmt.Sprintf("localhost:%d", cfg.Server.Port)
 
 	// 6. Configure Gin
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware(&cfg.CORS))
@@ -265,9 +270,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Server listening on port %d", cfg.Server.Port)
+		slogLogger.Info("Server listening", "port", cfg.Server.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			slogLogger.Error("Server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -276,14 +282,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	slogLogger.Info("Shutting down server...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
+		slogLogger.Error("Server shutdown error", "error", err)
 	}
 
-	log.Println("Server stopped")
+	slogLogger.Info("Server stopped")
 }
