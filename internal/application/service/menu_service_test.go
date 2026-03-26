@@ -204,25 +204,21 @@ func TestMenuService_GetMenuForUser(t *testing.T) {
 
 func TestComputeAccessMode(t *testing.T) {
 	t.Run("retorna edit cuando el usuario tiene permiso de escritura", func(t *testing.T) {
-		resourcePerms := []string{"dashboard:read", "dashboard:update"}
-		userPermSet := map[string]bool{"dashboard:read": true, "dashboard:update": true}
-		mode := computeAccessMode(resourcePerms, userPermSet)
+		mode := computeAccessMode([]string{"dashboard:read", "dashboard:update"})
 		if mode != "edit" {
 			t.Errorf("esperaba 'edit', obtuvo '%s'", mode)
 		}
 	})
 
 	t.Run("retorna view cuando el usuario solo tiene permiso de lectura", func(t *testing.T) {
-		resourcePerms := []string{"dashboard:read", "dashboard:update"}
-		userPermSet := map[string]bool{"dashboard:read": true}
-		mode := computeAccessMode(resourcePerms, userPermSet)
+		mode := computeAccessMode([]string{"dashboard:read"})
 		if mode != "view" {
 			t.Errorf("esperaba 'view', obtuvo '%s'", mode)
 		}
 	})
 
 	t.Run("retorna view con slice de permisos vacío", func(t *testing.T) {
-		mode := computeAccessMode([]string{}, map[string]bool{})
+		mode := computeAccessMode([]string{})
 		if mode != "view" {
 			t.Errorf("esperaba 'view', obtuvo '%s'", mode)
 		}
@@ -232,17 +228,15 @@ func TestComputeAccessMode(t *testing.T) {
 		actions := []string{"create", "update", "delete", "manage", "publish", "grade", "approve", "activate", "finalize", "export", "write"}
 		for _, action := range actions {
 			perm := "resource:" + action
-			mode := computeAccessMode([]string{perm}, map[string]bool{perm: true})
+			mode := computeAccessMode([]string{perm})
 			if mode != "edit" {
 				t.Errorf("acción '%s' debería ser 'edit', obtuvo '%s'", action, mode)
 			}
 		}
 	})
 
-	t.Run("write action returns edit", func(t *testing.T) {
-		resourcePerms := []string{"resource:write"}
-		userPermSet := map[string]bool{"resource:write": true}
-		mode := computeAccessMode(resourcePerms, userPermSet)
+	t.Run("acción write retorna edit", func(t *testing.T) {
+		mode := computeAccessMode([]string{"resource:write"})
 		if mode != "edit" {
 			t.Errorf("esperaba 'edit', obtuvo '%s'", mode)
 		}
@@ -252,7 +246,7 @@ func TestComputeAccessMode(t *testing.T) {
 		readActions := []string{"read", "browse", "list", "view"}
 		for _, action := range readActions {
 			perm := "resource:" + action
-			mode := computeAccessMode([]string{perm}, map[string]bool{perm: true})
+			mode := computeAccessMode([]string{perm})
 			if mode != "view" {
 				t.Errorf("acción '%s' debería ser 'view', obtuvo '%s'", action, mode)
 			}

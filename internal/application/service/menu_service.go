@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/application/dto"
@@ -130,23 +131,11 @@ var writeActions = []string{"create", "update", "delete", "manage", "publish", "
 
 // computeAccessMode determines whether a menu item should be rendered in
 // "edit" or "view" mode based on the user's permissions for that resource.
-func computeAccessMode(resourcePerms []string, userPermSet map[string]bool) string {
+func computeAccessMode(resourcePerms []string) string {
 	for _, perm := range resourcePerms {
-		if !userPermSet[perm] {
-			continue
-		}
 		parts := strings.SplitN(perm, ":", 2)
-		if len(parts) >= 2 {
-			action := parts[1]
-			// Strip :own suffix if present (e.g. "update:own" → "update")
-			if idx := strings.Index(action, ":"); idx >= 0 {
-				action = action[:idx]
-			}
-			for _, wa := range writeActions {
-				if action == wa {
-					return "edit"
-				}
-			}
+		if len(parts) == 2 && slices.Contains(writeActions, parts[1]) {
+			return "edit"
 		}
 	}
 	return "view"
@@ -156,11 +145,6 @@ func extractResourceKeys(permissions []string) []string {
 	seen := make(map[string]bool)
 	var keys []string
 	for _, perm := range permissions {
-		// Skip :own permissions — they grant access to self-profile only,
-		// not to the resource list (e.g., users:read:own should not show "Usuarios" menu)
-		if strings.HasSuffix(perm, ":own") {
-			continue
-		}
 		parts := strings.SplitN(perm, ":", 2)
 		if len(parts) >= 2 && !seen[parts[0]] {
 			seen[parts[0]] = true
@@ -208,7 +192,7 @@ func buildMenuTree(resources []*entities.Resource, visibleKeys map[string]bool, 
 		// Compute access_mode based on user permissions for this resource.
 		// For GetFullMenu (userPermSet == nil) default to "edit".
 		if userPermSet != nil && permsByResource != nil {
-			item.AccessMode = computeAccessMode(permsByResource[r.Key], userPermSet)
+			item.AccessMode = computeAccessMode(permsByResource[r.Key])
 			// If any child has "edit", propagate up to parent
 			if item.AccessMode == "view" {
 				for _, child := range item.Children {
