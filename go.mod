@@ -8,8 +8,9 @@ require (
 	github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.3
 	github.com/EduGoGroup/edugo-shared/auth v0.52.0
 	github.com/EduGoGroup/edugo-shared/common v0.56.0
-	github.com/EduGoGroup/edugo-shared/logger v0.50.1
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.9
+	github.com/EduGoGroup/edugo-shared/logger v0.51.0
+	github.com/EduGoGroup/edugo-shared/metrics v0.2.0
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.52.0
 	github.com/EduGoGroup/edugo-shared/repository v0.6.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0

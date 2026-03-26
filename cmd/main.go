@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -44,15 +45,27 @@ var (
 // @name Authorization
 // @description Type "Bearer" followed by a space and the JWT token. Example: "Bearer eyJhbGci..."
 func main() {
-	log.Printf("EduGo API IAM Platform starting... (Version: %s, Build: %s)", Version, BuildTime)
+	slog.Info("EduGo API IAM Platform starting...", "version", Version, "build", BuildTime)
 
 	// 1. Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
+		slog.Error("Error loading configuration", "error", err)
+		os.Exit(1)
 	}
 
-	// 2. Connect to PostgreSQL via GORM
+	// 2. Initialize logger (early, so all subsequent logs use the configured handler)
+	slogLogger := logger.NewSlogProvider(logger.SlogConfig{
+		Level:   cfg.Logging.Level,
+		Format:  cfg.Logging.Format,
+		Service: "edugo-api-iam-platform",
+		Env:     cfg.Environment,
+		Version: Version,
+	})
+	slog.SetDefault(slogLogger)
+	appLogger := logger.NewSlogAdapter(slogLogger)
+
+	// 3. Connect to PostgreSQL via GORM
 	// Use pgx with SimpleProtocol to disable prepared statement caching at the driver level.
 	// Neon's pooler (PgBouncer in transaction mode) does not support prepared statements,
 	// and pgx v5 caches them internally even when GORM's PrepareStmt is false.
@@ -62,7 +75,8 @@ func main() {
 
 	pgxConfig, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		log.Fatalf("Error parsing PostgreSQL DSN: %v", err)
+		slog.Error("Error parsing PostgreSQL DSN", "error", err)
+		os.Exit(1)
 	}
 	pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	pgxConfig.RuntimeParams["search_path"] = "auth,iam,academic,ui_config,public"
@@ -85,18 +99,17 @@ func main() {
 		PrepareStmt: false,
 	})
 	if err != nil {
-		log.Fatalf("Error connecting to PostgreSQL via GORM: %v", err)
+		slog.Error("Error connecting to PostgreSQL via GORM", "error", err)
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := sqlDB.PingContext(ctx); err != nil {
-		log.Fatalf("Error pinging PostgreSQL: %v", err)
+		slog.Error("Error pinging PostgreSQL", "error", err)
+		os.Exit(1)
 	}
-	log.Println("PostgreSQL connected successfully via GORM")
-
-	// 3. Initialize logger
-	appLogger := newSimpleLogger()
+	slog.Info("PostgreSQL connected successfully via GORM")
 
 	// 4. Create dependency container
 	c := container.NewContainer(gormDB, appLogger, cfg)
@@ -106,10 +119,14 @@ func main() {
 	docs.SwaggerInfo.Host = fmt.Sprintf("localhost:%d", cfg.Server.Port)
 
 	// 6. Configure Gin
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware(&cfg.CORS))
+
+	// Request logging middleware (request_id, structured logging)
+	r.Use(ginmiddleware.RequestLogging(slogLogger))
 
 	// Error handler middleware
 	r.Use(middleware.ErrorHandler(appLogger))
@@ -139,6 +156,7 @@ func main() {
 
 	v1 := r.Group("/api/v1")
 	v1.Use(ginmiddleware.JWTAuthMiddleware(c.JWTManager))
+	v1.Use(ginmiddleware.PostAuthLogging())
 	v1.Use(ginmiddleware.AuditMiddleware(auditLogger))
 	{
 		// Auth (protected)
@@ -244,7 +262,7 @@ func main() {
 		}
 	}
 
-	// 6. Start HTTP server with graceful shutdown
+	// 7. Start HTTP server with graceful shutdown
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      r,
@@ -253,9 +271,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Server listening on port %d", cfg.Server.Port)
+		slogLogger.Info("Server listening", "port", cfg.Server.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			slogLogger.Error("Server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -264,39 +283,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	slogLogger.Info("Shutting down server...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
+		slogLogger.Error("Server shutdown error", "error", err)
 	}
 
-	log.Println("Server stopped")
+	slogLogger.Info("Server stopped")
 }
-
-// simpleLogger adapts standard log to the logger.Logger interface
-type simpleLogger struct{}
-
-func newSimpleLogger() *simpleLogger { return &simpleLogger{} }
-
-func (l *simpleLogger) Debug(msg string, keysAndValues ...interface{}) {
-	log.Printf("[DEBUG] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Info(msg string, keysAndValues ...interface{}) {
-	log.Printf("[INFO] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Warn(msg string, keysAndValues ...interface{}) {
-	log.Printf("[WARN] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Error(msg string, keysAndValues ...interface{}) {
-	log.Printf("[ERROR] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Fatal(msg string, keysAndValues ...interface{}) {
-	log.Fatalf("[FATAL] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) With(_ ...interface{}) logger.Logger {
-	return l
-}
-func (l *simpleLogger) Sync() error { return nil }

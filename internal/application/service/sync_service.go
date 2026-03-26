@@ -16,9 +16,13 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/domain/repository"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	"github.com/EduGoGroup/edugo-shared/metrics"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
+
+// syncMetrics is a package-level metrics instance for sync operations.
+var syncMetrics = metrics.New("edugo-api-iam-platform")
 
 // SyncService defines the sync service interface
 type SyncService interface {
@@ -58,6 +62,8 @@ func NewSyncService(
 // If buckets is non-empty, only the specified buckets are loaded (e.g. ["menu","permissions","available_contexts","screens"]).
 // If buckets is empty, all buckets are loaded (backward compatible).
 func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeContext *auth.UserContext, buckets []string) (*dto.SyncBundleResponse, error) {
+	start := time.Now()
+
 	var (
 		mu      sync.Mutex
 		bundle  dto.SyncBundleResponse
@@ -214,6 +220,7 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 	}
 
 	if err := g.Wait(); err != nil {
+		syncMetrics.RecordBusinessOperation("sync", "full_bundle", time.Since(start), err)
 		return nil, fmt.Errorf("error building sync bundle: %w", err)
 	}
 
@@ -230,6 +237,7 @@ func (s *syncService) GetFullBundle(ctx context.Context, userID string, activeCo
 		bundle.Glossary = map[string]string{}
 	}
 
+	syncMetrics.RecordBusinessOperation("sync", "full_bundle", time.Since(start), nil)
 	return &bundle, nil
 }
 
