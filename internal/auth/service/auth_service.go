@@ -16,9 +16,14 @@ import (
 	"github.com/EduGoGroup/edugo-shared/audit"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	"github.com/EduGoGroup/edugo-shared/metrics"
 	sharedrepo "github.com/EduGoGroup/edugo-shared/repository"
 	"github.com/google/uuid"
 )
+
+// authMetrics is a package-level metrics instance used by auth services.
+// Uses NoOp recorder by default; a real recorder can be swapped in later.
+var authMetrics = metrics.New("edugo-api-iam-platform")
 
 // Sentinel errors for auth operations
 var (
@@ -86,6 +91,8 @@ func NewAuthService(
 
 // Login validates credentials and returns JWT tokens
 func (s *authService) Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error) {
+	start := time.Now()
+
 	// Normalize email to prevent case/whitespace bypass on rate limiting
 	email = strings.ToLower(strings.TrimSpace(email))
 
@@ -138,6 +145,8 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	}
 	if failedCount >= 5 {
 		s.logger.Warn("login rate limited", "email", email, "failed_count", failedCount)
+		authMetrics.RecordRateLimitHit("login")
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, ErrTooManyLoginAttempts
 	}
 
@@ -154,8 +163,10 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 				Severity:     audit.SeverityWarning,
 				Category:     audit.CategoryAuth,
 			})
+			authMetrics.RecordLogin(false, time.Since(start))
 			return nil, ErrInvalidCredentials
 		}
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {
@@ -170,6 +181,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			Severity:     audit.SeverityWarning,
 			Category:     audit.CategoryAuth,
 		})
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, ErrInvalidCredentials
 	}
 
@@ -187,6 +199,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			Severity:     audit.SeverityWarning,
 			Category:     audit.CategoryAuth,
 		})
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, ErrUserInactive
 	}
 
@@ -204,6 +217,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 			Severity:     audit.SeverityWarning,
 			Category:     audit.CategoryAuth,
 		})
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, ErrInvalidCredentials
 	}
 
@@ -245,12 +259,14 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	if activeContext == nil {
 		s.logger.Error("no RBAC context found for user", "user_id", user.ID.String(), "email", user.Email)
 		recordAttempt(ctx, false)
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
 
 	// 6. Generate tokens
 	tokenResponse, err := s.tokenService.GenerateTokenPairWithContext(user.ID.String(), user.Email, activeContext)
 	if err != nil {
+		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, fmt.Errorf("error generating tokens: %w", err)
 	}
 
@@ -302,6 +318,8 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		Metadata:     map[string]interface{}{"school_id": schoolID},
 	})
 
+	authMetrics.RecordLogin(true, time.Since(start))
+
 	// Update last-login timestamp in background (non-critical).
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -329,25 +347,32 @@ func (s *authService) Logout(ctx context.Context, _ string) error {
 
 // RefreshToken validates a refresh token JWT and generates new access + refresh tokens
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
+	start := time.Now()
+
 	// 1. Validate refresh token JWT
 	userID, _, schoolIDFromToken, err := s.tokenService.ValidateRefreshJWT(refreshToken)
 	if err != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, ErrInvalidRefreshToken
 	}
 
 	// 2. Find user and verify active
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, ErrInvalidRefreshToken
 	}
 	user, err := s.userRepo.FindByID(ctx, userUUID)
 	if err != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 	if user == nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, ErrUserNotFound
 	}
 	if !user.IsActive {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, ErrUserInactive
 	}
 
@@ -360,6 +385,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		if parseErr != nil {
 			// Signed JWT contains a non-parseable schoolID — reject to avoid silent context switch.
 			s.logger.Warn("invalid schoolID in refresh token", "user_id", userID, "school_id", schoolIDFromToken)
+			authMetrics.RecordTokenRefresh(false, time.Since(start))
 			return nil, ErrInvalidRefreshToken
 		}
 		targetSchoolID = &sid
@@ -375,6 +401,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	allRoles, rolesErr := s.userRoleRepo.FindByUser(ctx, userUUID)
 	if rolesErr != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, fmt.Errorf("error fetching user roles: %w", rolesErr)
 	}
 
@@ -407,18 +434,21 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	if activeContext == nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, fmt.Errorf("user has no assigned roles")
 	}
 
 	// 5. Generate new access token (use DB email, not claim email)
 	resp, err := s.tokenService.GenerateAccessTokenWithContext(userID, user.Email, activeContext)
 	if err != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, fmt.Errorf("error generating access token: %w", err)
 	}
 
 	// 6. Rotate refresh token preserving the resolved schoolID
 	newRefreshJWT, _, err := s.tokenService.GenerateRefreshJWT(userID, user.Email, activeContext.SchoolID)
 	if err != nil {
+		authMetrics.RecordTokenRefresh(false, time.Since(start))
 		return nil, fmt.Errorf("error generating refresh token: %w", err)
 	}
 
@@ -435,6 +465,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	s.logger.Info("token refreshed", "user_id", userID, "email", user.Email)
 
+	authMetrics.RecordTokenRefresh(true, time.Since(start))
 	return resp, nil
 }
 

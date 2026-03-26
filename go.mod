@@ -9,6 +9,7 @@ require (
 	github.com/EduGoGroup/edugo-shared/auth v0.52.0
 	github.com/EduGoGroup/edugo-shared/common v0.56.0
 	github.com/EduGoGroup/edugo-shared/logger v0.50.1
+	github.com/EduGoGroup/edugo-shared/metrics v0.1.0
 	github.com/EduGoGroup/edugo-shared/middleware/gin v0.51.9
 	github.com/EduGoGroup/edugo-shared/repository v0.6.0
 	github.com/caarlos0/env/v11 v11.4.0
@@ -82,3 +83,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/EduGoGroup/edugo-shared/metrics v0.1.0 => ../edugo-shared/metrics
