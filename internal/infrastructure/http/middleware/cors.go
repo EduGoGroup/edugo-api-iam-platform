@@ -1,13 +1,16 @@
 package middleware
 
 import (
+	"log"
 	"strings"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
-func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
+// CORSMiddleware configures CORS based on configuration.
+// In non-development environments, wildcard (*) origins are rejected at startup.
+func CORSMiddleware(cfg *config.CORSConfig, environment string) gin.HandlerFunc {
 	allowedOrigins := parseCSV(cfg.AllowedOrigins)
 
 	hasWildcard := false
@@ -16,6 +19,11 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 			hasWildcard = true
 			break
 		}
+	}
+
+	// Block wildcard CORS in non-development environments
+	if hasWildcard && environment != "" && environment != "development" && environment != "local" {
+		log.Fatalf("CORS wildcard (*) is not allowed in %s environment. Set CORS_ALLOWED_ORIGINS explicitly.", environment)
 	}
 
 	return func(c *gin.Context) {
