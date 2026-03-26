@@ -156,6 +156,7 @@ func main() {
 
 	v1 := r.Group("/api/v1")
 	v1.Use(ginmiddleware.JWTAuthMiddleware(c.JWTManager))
+	v1.Use(ginmiddleware.PostAuthLogging())
 	v1.Use(ginmiddleware.AuditMiddleware(auditLogger))
 	{
 		// Auth (protected)

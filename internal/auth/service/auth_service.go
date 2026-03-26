@@ -91,6 +91,7 @@ func NewAuthService(
 
 // Login validates credentials and returns JWT tokens
 func (s *authService) Login(ctx context.Context, email, password, clientIP, userAgent string) (*dto.LoginResponse, error) {
+	log := logger.FromContext(ctx)
 	start := time.Now()
 
 	// Normalize email to prevent case/whitespace bypass on rate limiting
@@ -144,7 +145,7 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		s.logger.Warn("error checking login rate limit", "email", email, "error", rateLimitErr)
 	}
 	if failedCount >= 5 {
-		s.logger.Warn("login rate limited", "email", email, "failed_count", failedCount)
+		log.Warn("login rate limited", "email", email, "failed_count", failedCount, "ip", clientIP)
 		authMetrics.RecordRateLimitHit("login")
 		authMetrics.RecordLogin(false, time.Since(start))
 		return nil, ErrTooManyLoginAttempts
@@ -295,12 +296,13 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 		Permissions:      activeContext.Permissions,
 	}
 
-	s.logger.Info("user logged in",
+	log.Info("user logged in",
 		"entity_type", "auth_session",
 		"user_id", user.ID.String(),
 		"email", user.Email,
 		"role", activeContext.RoleName,
 		"school_id", schoolID,
+		"ip", clientIP,
 	)
 
 	// Record successful attempt and audit log synchronously (required for rate
@@ -347,6 +349,7 @@ func (s *authService) Logout(ctx context.Context, _ string) error {
 
 // RefreshToken validates a refresh token JWT and generates new access + refresh tokens
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
+	log := logger.FromContext(ctx)
 	start := time.Now()
 
 	// 1. Validate refresh token JWT
@@ -463,7 +466,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		Permissions:      activeContext.Permissions,
 	}
 
-	s.logger.Info("token refreshed", "user_id", userID, "email", user.Email)
+	log.Info("token refreshed", "user_id", userID, "email", user.Email)
 
 	authMetrics.RecordTokenRefresh(true, time.Since(start))
 	return resp, nil
@@ -542,6 +545,7 @@ func (s *authService) getUserSchools(ctx context.Context, userID uuid.UUID) ([]d
 
 // SwitchContext switches the active school context for the user
 func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID, academicUnitID string) (*dto.SwitchContextResponse, error) {
+	log := logger.FromContext(ctx)
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user_id: %w", err)
@@ -686,7 +690,7 @@ func (s *authService) SwitchContext(ctx context.Context, userID, targetSchoolID,
 		Metadata:     map[string]interface{}{"new_school_id": targetSchoolID, "academic_unit_id": academicUnitID},
 	})
 
-	s.logger.Info("context switched",
+	log.Info("context switched",
 		"entity_type", "auth_context",
 		"user_id", userID,
 		"new_school_id", targetSchoolID,
