@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -96,7 +97,15 @@ func main() {
 	log.Println("PostgreSQL connected successfully via GORM")
 
 	// 3. Initialize logger
-	appLogger := newSimpleLogger()
+	slogLogger := logger.NewSlogProvider(logger.SlogConfig{
+		Level:   cfg.Logging.Level,
+		Format:  cfg.Logging.Format,
+		Service: "edugo-api-iam-platform",
+		Env:     cfg.Environment,
+		Version: Version,
+	})
+	slog.SetDefault(slogLogger)
+	appLogger := logger.NewSlogAdapter(slogLogger)
 
 	// 4. Create dependency container
 	c := container.NewContainer(gormDB, appLogger, cfg)
@@ -110,6 +119,9 @@ func main() {
 
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware(&cfg.CORS))
+
+	// Request logging middleware (request_id, structured logging)
+	r.Use(ginmiddleware.RequestLogging(slogLogger))
 
 	// Error handler middleware
 	r.Use(middleware.ErrorHandler(appLogger))
@@ -275,28 +287,3 @@ func main() {
 
 	log.Println("Server stopped")
 }
-
-// simpleLogger adapts standard log to the logger.Logger interface
-type simpleLogger struct{}
-
-func newSimpleLogger() *simpleLogger { return &simpleLogger{} }
-
-func (l *simpleLogger) Debug(msg string, keysAndValues ...interface{}) {
-	log.Printf("[DEBUG] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Info(msg string, keysAndValues ...interface{}) {
-	log.Printf("[INFO] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Warn(msg string, keysAndValues ...interface{}) {
-	log.Printf("[WARN] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Error(msg string, keysAndValues ...interface{}) {
-	log.Printf("[ERROR] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) Fatal(msg string, keysAndValues ...interface{}) {
-	log.Fatalf("[FATAL] %s %v", msg, keysAndValues)
-}
-func (l *simpleLogger) With(_ ...interface{}) logger.Logger {
-	return l
-}
-func (l *simpleLogger) Sync() error { return nil }
