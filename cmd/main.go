@@ -54,7 +54,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 2. Connect to PostgreSQL via GORM
+	// 2. Initialize logger (early, so all subsequent logs use the configured handler)
+	slogLogger := logger.NewSlogProvider(logger.SlogConfig{
+		Level:   cfg.Logging.Level,
+		Format:  cfg.Logging.Format,
+		Service: "edugo-api-iam-platform",
+		Env:     cfg.Environment,
+		Version: Version,
+	})
+	slog.SetDefault(slogLogger)
+	appLogger := logger.NewSlogAdapter(slogLogger)
+
+	// 3. Connect to PostgreSQL via GORM
 	// Use pgx with SimpleProtocol to disable prepared statement caching at the driver level.
 	// Neon's pooler (PgBouncer in transaction mode) does not support prepared statements,
 	// and pgx v5 caches them internally even when GORM's PrepareStmt is false.
@@ -99,17 +110,6 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("PostgreSQL connected successfully via GORM")
-
-	// 3. Initialize logger
-	slogLogger := logger.NewSlogProvider(logger.SlogConfig{
-		Level:   cfg.Logging.Level,
-		Format:  cfg.Logging.Format,
-		Service: "edugo-api-iam-platform",
-		Env:     cfg.Environment,
-		Version: Version,
-	})
-	slog.SetDefault(slogLogger)
-	appLogger := logger.NewSlogAdapter(slogLogger)
 
 	// 4. Create dependency container
 	c := container.NewContainer(gormDB, appLogger, cfg)
@@ -262,7 +262,7 @@ func main() {
 		}
 	}
 
-	// 6. Start HTTP server with graceful shutdown
+	// 7. Start HTTP server with graceful shutdown
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      r,
