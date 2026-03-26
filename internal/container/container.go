@@ -15,6 +15,7 @@ import (
 	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/logger"
+	"github.com/EduGoGroup/edugo-shared/metrics"
 	sharedPgRepo "github.com/EduGoGroup/edugo-shared/repository"
 	"gorm.io/gorm"
 )
@@ -23,6 +24,7 @@ import (
 type Container struct {
 	DB         *gorm.DB
 	Logger     logger.Logger
+	Metrics    *metrics.Metrics
 	JWTManager *auth.JWTManager
 
 	// Auth
@@ -47,6 +49,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 	c := &Container{
 		DB:         db,
 		Logger:     log,
+		Metrics:    metrics.New("edugo-api-iam-platform"),
 		JWTManager: auth.NewJWTManager(cfg.Auth.JWT.Secret, cfg.Auth.JWT.Issuer),
 	}
 
