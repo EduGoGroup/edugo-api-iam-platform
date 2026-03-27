@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-03-27
+
+### Tipo de Release: patch
+
+- fix: usar tags publicados de shared en vez de replace locales
+- feat: implement token revocation on logout
+- fix: fail closed para CORS, Expose-Headers en todas las responses
+- Bump edugo-shared dependencies
+- fix: restrict CORS wildcard to development environment only
+- fix: use context logger consistently in Login and RefreshToken
+- Bump edugo-shared deps and remove local replace
+- fix: move slog initialization before DB connection
+- fix: add PostAuthLogging + FromContext in auth services + IP in logs
+- fix: replace gin.Default with gin.New+Recovery, migrate log.Printf to slogLogger
+- feat: instrument IAM API with metrics facade for future observability
+- fix: remove leaked .env.running and add .env.* to gitignore
+- feat: replace simpleLogger with centralized slog logging
+
+---
+
 ## [0.23.0] - 2026-03-26
 
 ### Tipo de Release: patch
