@@ -21,27 +21,37 @@ func CORSMiddleware(cfg *config.CORSConfig, environment string) gin.HandlerFunc 
 		}
 	}
 
-	// Block wildcard CORS in non-development environments
-	if hasWildcard && environment != "" && environment != "development" && environment != "local" {
-		log.Fatalf("CORS wildcard (*) is not allowed in %s environment. Set CORS_ALLOWED_ORIGINS explicitly.", environment)
+	// Block wildcard CORS in non-development environments (fail closed: empty env is treated as non-development)
+	normalizedEnv := strings.ToLower(strings.TrimSpace(environment))
+
+	if hasWildcard && normalizedEnv != "development" && normalizedEnv != "local" {
+		envForLog := environment
+		if strings.TrimSpace(environment) == "" {
+			envForLog = "non-development"
+		}
+		log.Fatalf("CORS wildcard (*) is not allowed in %s environment. Set CORS_ALLOWED_ORIGINS explicitly.", envForLog)
 	}
 
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 
-		if isOriginAllowed(origin, allowedOrigins) {
+		originAllowed := isOriginAllowed(origin, allowedOrigins)
+		if originAllowed {
 			if hasWildcard {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 			} else {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
+			c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length,ETag,X-Request-ID,X-Correlation-ID")
 		}
 
 		if c.Request.Method == "OPTIONS" {
-			c.Writer.Header().Set("Access-Control-Allow-Methods", cfg.AllowedMethods)
-			c.Writer.Header().Set("Access-Control-Allow-Headers", cfg.AllowedHeaders)
-			c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+			if originAllowed {
+				c.Writer.Header().Set("Access-Control-Allow-Methods", cfg.AllowedMethods)
+				c.Writer.Header().Set("Access-Control-Allow-Headers", cfg.AllowedHeaders)
+				c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+			}
 			c.AbortWithStatus(204)
 			return
 		}

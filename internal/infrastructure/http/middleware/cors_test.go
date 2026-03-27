@@ -50,11 +50,24 @@ func TestCORSMiddleware_WildcardInLocal(t *testing.T) {
 	if handler == nil {
 		t.Fatal("expected handler, got nil")
 	}
+
+	r := gin.New()
+	r.Use(handler)
+	r.GET("/test", func(c *gin.Context) { c.Status(200) })
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+	r.ServeHTTP(w, req)
+
+	if w.Header().Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected wildcard origin in local env, got %q", w.Header().Get("Access-Control-Allow-Origin"))
+	}
 }
 
-func TestCORSMiddleware_WildcardEmptyEnv(t *testing.T) {
+func TestCORSMiddleware_ExplicitOriginsEmptyEnv(t *testing.T) {
 	cfg := &config.CORSConfig{
-		AllowedOrigins: "*",
+		AllowedOrigins: "https://app.edugo.com",
 		AllowedMethods: "GET,POST",
 		AllowedHeaders: "Origin,Content-Type",
 	}
@@ -62,6 +75,19 @@ func TestCORSMiddleware_WildcardEmptyEnv(t *testing.T) {
 	handler := CORSMiddleware(cfg, "")
 	if handler == nil {
 		t.Fatal("expected handler, got nil")
+	}
+
+	r := gin.New()
+	r.Use(handler)
+	r.GET("/test", func(c *gin.Context) { c.Status(200) })
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("Origin", "https://app.edugo.com")
+	r.ServeHTTP(w, req)
+
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "https://app.edugo.com" {
+		t.Errorf("expected allowed origin with empty env, got %q", got)
 	}
 }
 
@@ -133,7 +159,52 @@ func TestCORSMiddleware_PreflightResponse(t *testing.T) {
 	}
 }
 
-// Note: Testing log.Fatal in production+wildcard scenario is not straightforward
-// because log.Fatal calls os.Exit(1). The behavior is verified by the explicit
-// origins test in production, which passes without fatal.
-// The wildcard+production case is documented as a fail-fast startup guard.
+func TestCORSMiddleware_ExposeHeadersOnNormalResponse(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins: "https://app.edugo.com",
+		AllowedMethods: "GET,POST",
+		AllowedHeaders: "Origin,Content-Type",
+	}
+
+	handler := CORSMiddleware(cfg, "production")
+	r := gin.New()
+	r.Use(handler)
+	r.GET("/test", func(c *gin.Context) { c.Status(200) })
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("Origin", "https://app.edugo.com")
+	r.ServeHTTP(w, req)
+
+	if got := w.Header().Get("Access-Control-Expose-Headers"); got != "Content-Length,ETag,X-Request-ID,X-Correlation-ID" {
+		t.Errorf("expected Expose-Headers on normal response, got %q", got)
+	}
+}
+
+func TestCORSMiddleware_PreflightDisallowedOrigin(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins: "https://app.edugo.com",
+		AllowedMethods: "GET,POST,PUT",
+		AllowedHeaders: "Origin,Content-Type,Authorization",
+	}
+
+	handler := CORSMiddleware(cfg, "production")
+	r := gin.New()
+	r.Use(handler)
+	r.GET("/test", func(c *gin.Context) { c.Status(200) })
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("OPTIONS", "/test", nil)
+	req.Header.Set("Origin", "https://evil.com")
+	r.ServeHTTP(w, req)
+
+	if w.Code != 204 {
+		t.Errorf("expected 204 for preflight, got %d", w.Code)
+	}
+	if got := w.Header().Get("Access-Control-Allow-Methods"); got != "" {
+		t.Errorf("expected no Allow-Methods for disallowed origin, got %q", got)
+	}
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("expected no Allow-Origin for disallowed origin, got %q", got)
+	}
+}
