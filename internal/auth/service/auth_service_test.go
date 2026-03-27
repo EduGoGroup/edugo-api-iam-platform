@@ -321,6 +321,7 @@ func TestLogin_Success_GlobalRole(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "test-agent")
@@ -372,6 +373,7 @@ func TestLogin_Success_SchoolRole(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "")
@@ -400,6 +402,7 @@ func TestLogin_InvalidPassword(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "wrong-password", "127.0.0.1", "")
@@ -423,6 +426,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "nobody@test.com", "password", "127.0.0.1", "")
@@ -449,6 +453,7 @@ func TestLogin_InactiveUser(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "")
@@ -478,6 +483,7 @@ func TestLogin_RateLimited(t *testing.T) {
 				return 10, nil // over threshold of 5
 			},
 		},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "")
@@ -507,6 +513,7 @@ func TestLogin_NoRoles(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "")
@@ -553,6 +560,7 @@ func TestLogin_AuditLogRecorded(t *testing.T) {
 			},
 		},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.Login(context.Background(), "test@edugo.test", "correct-password", "127.0.0.1", "")
@@ -593,6 +601,7 @@ func TestLogin_EmailNormalized(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	_, err := svc.Login(context.Background(), "  TEST@Edugo.Test  ", "correct-password", "", "")
@@ -635,6 +644,7 @@ func TestSwitchContext_GlobalRole(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), schoolID.String(), "")
@@ -666,6 +676,7 @@ func TestSwitchContext_NoMembershipNoGlobalRole(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.SwitchContext(context.Background(), user.ID.String(), uuid.New().String(), "")
@@ -687,6 +698,7 @@ func TestGetSchoolUnits_InvalidSchoolID(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.GetSchoolUnits(context.Background(), "not-a-uuid")
@@ -719,6 +731,7 @@ func TestGetSchoolUnits_Success(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.GetSchoolUnits(context.Background(), schoolID.String())
@@ -748,6 +761,7 @@ func TestGetSchoolUnits_RepoError(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.GetSchoolUnits(context.Background(), schoolID.String())
@@ -802,6 +816,7 @@ func TestGetAvailableContexts_MembershipWithUnit(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.GetAvailableContexts(context.Background(), userID.String(), nil)
@@ -876,6 +891,7 @@ func TestRefreshToken_GlobalRole_Success(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
@@ -939,6 +955,7 @@ func TestRefreshToken_SchoolRole_Success(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
@@ -964,6 +981,7 @@ func TestRefreshToken_InvalidToken(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.RefreshToken(context.Background(), "garbage.jwt.string")
@@ -994,6 +1012,7 @@ func TestRefreshToken_InactiveUser(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
@@ -1034,10 +1053,130 @@ func TestRefreshToken_NoRoles(t *testing.T) {
 		&mockLog{},
 		&mockAuditLog{},
 		&mockLoginAttemptRepo{},
+		&auth.NoOpBlacklist{},
 	)
 
 	resp, err := svc.RefreshToken(context.Background(), refreshJWT)
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no assigned roles")
+}
+
+// ─── Logout Tests ────────────────────────────────────────────────────────────
+
+type mockBlacklist struct {
+	revokeFn    func(jti string, expiresAt time.Time)
+	isRevokedFn func(jti string) bool
+}
+
+func (m *mockBlacklist) Revoke(jti string, expiresAt time.Time) {
+	if m.revokeFn != nil {
+		m.revokeFn(jti, expiresAt)
+	}
+}
+
+func (m *mockBlacklist) IsRevoked(jti string) bool {
+	if m.isRevokedFn != nil {
+		return m.isRevokedFn(jti)
+	}
+	return false
+}
+
+func TestLogout_RevokesToken(t *testing.T) {
+	ts := newTestTokenService()
+
+	// Generate a valid access token with context
+	activeCtx := &auth.UserContext{
+		SchoolID:   uuid.New().String(),
+		SchoolName: "Test School",
+		RoleName:   "teacher",
+	}
+	tokenResp, err := ts.GenerateTokenPairWithContext(
+		uuid.New().String(), "test@edugo.test", activeCtx,
+	)
+	require.NoError(t, err)
+
+	// Track blacklist calls
+	var revokedJTI string
+	bl := &mockBlacklist{
+		revokeFn: func(jti string, _ time.Time) {
+			revokedJTI = jti
+		},
+	}
+
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+		bl,
+	)
+
+	err = svc.Logout(context.Background(), tokenResp.AccessToken)
+	require.NoError(t, err)
+	assert.NotEmpty(t, revokedJTI, "logout should revoke the token JTI")
+}
+
+func TestLogout_InvalidToken_StillSucceeds(t *testing.T) {
+	bl := &mockBlacklist{}
+
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		newTestTokenService(),
+		&mockLog{},
+		&mockAuditLog{},
+		&mockLoginAttemptRepo{},
+		bl,
+	)
+
+	err := svc.Logout(context.Background(), "garbage.token.string")
+	assert.NoError(t, err, "logout should succeed even with an invalid token")
+}
+
+func TestLogout_AuditLogRecorded(t *testing.T) {
+	ts := newTestTokenService()
+	activeCtx := &auth.UserContext{
+		SchoolID:   uuid.New().String(),
+		SchoolName: "Test School",
+		RoleName:   "teacher",
+	}
+	tokenResp, err := ts.GenerateTokenPairWithContext(
+		uuid.New().String(), "test@edugo.test", activeCtx,
+	)
+	require.NoError(t, err)
+
+	var auditAction string
+	svc := NewAuthService(
+		&mockUserRepo{},
+		&mockUserRoleRepo{},
+		&mockRoleRepository{},
+		&mockMembershipRepo{},
+		&mockSchoolRepo{},
+		&mockAcademicUnitRepo{},
+		ts,
+		&mockLog{},
+		&mockAuditLog{
+			logFn: func(_ context.Context, event audit.AuditEvent) error {
+				auditAction = event.Action
+				return nil
+			},
+		},
+		&mockLoginAttemptRepo{},
+		&mockBlacklist{},
+	)
+
+	err = svc.Logout(context.Background(), tokenResp.AccessToken)
+	require.NoError(t, err)
+	assert.Equal(t, "logout", auditAction, "audit log should record logout action")
 }

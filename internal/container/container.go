@@ -26,6 +26,7 @@ type Container struct {
 	Logger     logger.Logger
 	Metrics    *metrics.Metrics
 	JWTManager *auth.JWTManager
+	Blacklist  auth.TokenBlacklist
 
 	// Auth
 	TokenService  *authService.TokenService
@@ -45,12 +46,13 @@ type Container struct {
 }
 
 // NewContainer creates a new container and initializes all dependencies
-func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container {
+func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config, blacklist auth.TokenBlacklist) *Container {
 	c := &Container{
 		DB:         db,
 		Logger:     log,
 		Metrics:    metrics.New("edugo-api-iam-platform"),
 		JWTManager: auth.NewJWTManager(cfg.Auth.JWT.Secret, cfg.Auth.JWT.Issuer),
+		Blacklist:  blacklist,
 	}
 
 	// Audit logger
@@ -79,7 +81,7 @@ func NewContainer(db *gorm.DB, log logger.Logger, cfg *config.Config) *Container
 
 	// Auth
 	c.TokenService = authService.NewTokenService(c.JWTManager, cfg.Auth.JWT.AccessTokenDuration, cfg.Auth.JWT.RefreshTokenDuration)
-	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, academicUnitRepo, c.TokenService, log, auditLogger, loginAttemptRepo)
+	c.AuthService = authService.NewAuthService(userRepo, userRoleRepo, roleRepo, membershipRepo, schoolRepo, academicUnitRepo, c.TokenService, log, auditLogger, loginAttemptRepo, blacklist)
 	c.AuthHandler = authHandler.NewAuthHandler(c.AuthService, log)
 	c.VerifyHandler = authHandler.NewVerifyHandler(c.TokenService)
 
