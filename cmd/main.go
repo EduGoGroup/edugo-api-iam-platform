@@ -123,7 +123,7 @@ func main() {
 	r.Use(gin.Recovery())
 
 	// CORS middleware
-	r.Use(middleware.CORSMiddleware(&cfg.CORS))
+	r.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Environment))
 
 	// Request logging middleware (request_id, structured logging)
 	r.Use(ginmiddleware.RequestLogging(slogLogger))
