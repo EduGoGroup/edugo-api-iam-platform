@@ -25,6 +25,7 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/container"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/middleware"
 	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
+	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/common/types/enum"
 	"github.com/EduGoGroup/edugo-shared/logger"
 	ginmiddleware "github.com/EduGoGroup/edugo-shared/middleware/gin"
@@ -111,19 +112,24 @@ func main() {
 	}
 	slog.Info("PostgreSQL connected successfully via GORM")
 
-	// 4. Create dependency container
-	c := container.NewContainer(gormDB, appLogger, cfg)
+	// 4. Create token blacklist (in-memory, TTL cleanup via background goroutine)
+	blacklistCtx, blacklistCancel := context.WithCancel(context.Background())
+	defer blacklistCancel()
+	blacklist := auth.NewInMemoryBlacklist(blacklistCtx)
+
+	// 5. Create dependency container
+	c := container.NewContainer(gormDB, appLogger, cfg, blacklist)
 	defer func() { _ = c.Close() }()
 
-	// 5. Configure Swagger host dynamically
+	// 6. Configure Swagger host dynamically
 	docs.SwaggerInfo.Host = fmt.Sprintf("localhost:%d", cfg.Server.Port)
 
-	// 6. Configure Gin
+	// 7. Configure Gin
 	r := gin.New()
 	r.Use(gin.Recovery())
 
 	// CORS middleware
-	r.Use(middleware.CORSMiddleware(&cfg.CORS))
+	r.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Environment))
 
 	// Request logging middleware (request_id, structured logging)
 	r.Use(ginmiddleware.RequestLogging(slogLogger))
@@ -155,7 +161,7 @@ func main() {
 	auditLogger := auditpostgres.NewPostgresAuditLogger(gormDB, "iam-platform")
 
 	v1 := r.Group("/api/v1")
-	v1.Use(ginmiddleware.JWTAuthMiddleware(c.JWTManager))
+	v1.Use(ginmiddleware.JWTAuthMiddlewareWithBlacklist(c.JWTManager, blacklist))
 	v1.Use(ginmiddleware.PostAuthLogging())
 	v1.Use(ginmiddleware.AuditMiddleware(auditLogger))
 	{
@@ -262,7 +268,7 @@ func main() {
 		}
 	}
 
-	// 7. Start HTTP server with graceful shutdown
+	// 8. Start HTTP server with graceful shutdown
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      r,

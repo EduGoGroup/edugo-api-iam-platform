@@ -60,6 +60,7 @@ type authService struct {
 	logger           logger.Logger
 	auditLogger      audit.AuditLogger
 	loginAttemptRepo authrepo.LoginAttemptRepository
+	blacklist        auth.TokenBlacklist
 }
 
 // NewAuthService creates a new auth service
@@ -74,6 +75,7 @@ func NewAuthService(
 	logger logger.Logger,
 	auditLogger audit.AuditLogger,
 	loginAttemptRepo authrepo.LoginAttemptRepository,
+	blacklist auth.TokenBlacklist,
 ) AuthService {
 	return &authService{
 		userRepo:         userRepo,
@@ -86,6 +88,7 @@ func NewAuthService(
 		logger:           logger,
 		auditLogger:      auditLogger,
 		loginAttemptRepo: loginAttemptRepo,
+		blacklist:        blacklist,
 	}
 }
 
@@ -336,8 +339,17 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 }
 
 // Logout invalidates the access token
-func (s *authService) Logout(ctx context.Context, _ string) error {
-	s.logger.Info("user logged out", "entity_type", "auth_session")
+func (s *authService) Logout(ctx context.Context, tokenString string) error {
+	// Parse token to get JTI for revocation
+	claims, err := s.tokenService.ValidateAccessToken(tokenString)
+	if err != nil {
+		// Token might be expired/invalid, still consider logout successful
+		s.logger.Warn("logout with invalid token", "error", err.Error())
+	} else if claims.ID != "" {
+		s.blacklist.Revoke(claims.ID, claims.ExpiresAt.Time)
+		s.logger.Info("token revoked", "jti", claims.ID, "entity_type", "auth_session")
+	}
+
 	_ = s.auditLogger.Log(ctx, audit.AuditEvent{
 		Action:       "logout",
 		ResourceType: "session",

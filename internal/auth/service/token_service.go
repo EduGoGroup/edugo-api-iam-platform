@@ -88,6 +88,12 @@ func (s *TokenService) GenerateAccessTokenWithContext(userID, email string, acti
 	}, nil
 }
 
+// ValidateAccessToken validates an access token and returns the raw claims.
+// Used internally (e.g., for extracting JTI during logout).
+func (s *TokenService) ValidateAccessToken(token string) (*auth.Claims, error) {
+	return s.jwtManager.ValidateToken(token)
+}
+
 // VerifyToken validates a JWT token and returns token info
 func (s *TokenService) VerifyToken(_ context.Context, token string) (*dto.VerifyTokenResponse, error) {
 	claims, err := s.jwtManager.ValidateToken(token)
