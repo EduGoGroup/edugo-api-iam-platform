@@ -3,7 +3,7 @@ module github.com/EduGoGroup/edugo-api-iam-platform
 go 1.25.0
 
 require (
-	github.com/EduGoGroup/edugo-infrastructure/postgres v0.71.0
+	github.com/EduGoGroup/edugo-infrastructure/postgres v0.73.0
 	github.com/EduGoGroup/edugo-shared/audit v0.1.0
 	github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.3
 	github.com/EduGoGroup/edugo-shared/auth v0.54.0
