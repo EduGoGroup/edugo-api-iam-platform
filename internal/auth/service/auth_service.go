@@ -882,6 +882,9 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 			s.logger.Warn("error fetching permissions for membership context",
 				"user_id", userUUID.String(), "school_id", schoolID, "error", err)
 		}
+		if perms == nil {
+			perms = []string{}
+		}
 
 		available = append(available, &dto.UserContextDTO{
 			RoleID:           roleID,
@@ -942,6 +945,9 @@ func (s *authService) GetAvailableContexts(ctx context.Context, userID string, c
 		permissions, err := s.userRoleRepo.GetUserPermissions(ctx, userUUID, ur.SchoolID, ur.AcademicUnitID)
 		if err != nil {
 			s.logger.Warn("error fetching user permissions", "user_id", userUUID.String(), "error", err)
+		}
+		if permissions == nil {
+			permissions = []string{}
 		}
 
 		available = append(available, &dto.UserContextDTO{
