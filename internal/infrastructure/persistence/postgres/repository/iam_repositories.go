@@ -318,7 +318,7 @@ func (r *postgresUserRoleRepository) GetUserPermissions(ctx context.Context, use
 		args = append(args, *unitID)
 	}
 	query += ` ORDER BY p.name`
-	var perms []string
+	perms := make([]string, 0)
 	err := r.db.WithContext(ctx).Raw(query, args...).Scan(&perms).Error
 	return perms, err
 }
