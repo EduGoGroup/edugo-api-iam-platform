@@ -3,15 +3,15 @@ module github.com/EduGoGroup/edugo-api-iam-platform
 go 1.25.0
 
 require (
-	github.com/EduGoGroup/edugo-infrastructure/postgres v0.73.0
+	github.com/EduGoGroup/edugo-infrastructure/postgres v0.76.0
 	github.com/EduGoGroup/edugo-shared/audit v0.1.0
 	github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.3
 	github.com/EduGoGroup/edugo-shared/auth v0.54.0
 	github.com/EduGoGroup/edugo-shared/common v0.58.0
 	github.com/EduGoGroup/edugo-shared/logger v0.51.0
 	github.com/EduGoGroup/edugo-shared/metrics v0.3.0
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.0
-	github.com/EduGoGroup/edugo-shared/repository v0.7.0
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.1
+	github.com/EduGoGroup/edugo-shared/repository v0.7.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
@@ -34,7 +34,7 @@ require (
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
-	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/gin-contrib/sse v1.1.1 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/jsonreference v0.21.5 // indirect
 	github.com/go-openapi/spec v0.22.4 // indirect
