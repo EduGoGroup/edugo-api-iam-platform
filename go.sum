@@ -1,5 +1,5 @@
-github.com/EduGoGroup/edugo-infrastructure/postgres v0.77.0 h1:5qvReUFbFg471EYygfkophq3YjUqyqN7aFij0jh7RIY=
-github.com/EduGoGroup/edugo-infrastructure/postgres v0.77.0/go.mod h1:h9dD6t1LbuMWqrG37ZNoNnxcq/ne+u8tDzYNheTwAKw=
+github.com/EduGoGroup/edugo-infrastructure/postgres v0.77.1 h1:THWMkgpcVwr1UQf9bYrWAGUroNw19LY55VJnfTW9ypI=
+github.com/EduGoGroup/edugo-infrastructure/postgres v0.77.1/go.mod h1:h9dD6t1LbuMWqrG37ZNoNnxcq/ne+u8tDzYNheTwAKw=
 github.com/EduGoGroup/edugo-shared/audit v0.1.0 h1:MZ9/HcQVJUD0beUI0Or76H3wb89nU2kwvc0kfkk31v8=
 github.com/EduGoGroup/edugo-shared/audit v0.1.0/go.mod h1:qUZWN7on6+fnm2TdW0Zw0zBjLawzx/uR0gYVPNPbzBQ=
 github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.3 h1:NQvg6rOQe9m9Z84akfsZxXc+eA4lIZUz+eh6veh7tTc=
@@ -12,10 +12,10 @@ github.com/EduGoGroup/edugo-shared/logger v0.51.0 h1:e4KutBDDiYyjzNeNF76/4Jd1vIP
 github.com/EduGoGroup/edugo-shared/logger v0.51.0/go.mod h1:MxMk6Yy4H7UrdwdO4H5CYvU6AFTBHc8IyiwSAHXCfPk=
 github.com/EduGoGroup/edugo-shared/metrics v0.3.0 h1:+C6PfbkA/eBuWNq8rrcsABytlOHXwtn/kI2qTO4lyS4=
 github.com/EduGoGroup/edugo-shared/metrics v0.3.0/go.mod h1:cW8Gq1Wo2V9ZpUgVKGyGfSAn2qkmw/bRuYrNCJuT1kw=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.2 h1:oAGIhWaGpfJLiphsXYCkAbAPHB6CMh/4zvcO0astNvg=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.2/go.mod h1:ec4JeQN0IZbSTBU8wta8IG9rm1HACkU3EnAWGfYRTts=
-github.com/EduGoGroup/edugo-shared/repository v0.7.2 h1:XSZ2basvAPgj40RIFEyvjXeHT8u63LF0opkBQTKj2qU=
-github.com/EduGoGroup/edugo-shared/repository v0.7.2/go.mod h1:O1XlHsGJ0mW98b18gyl8VVUYXe4aT9APcEeT83KT/8k=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.3 h1:EFahfk//LNQ239JOugwgURFbJLhetmt4QInpKQkEW4k=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.3/go.mod h1:mQ53D4clIX9EtAekEKmToui3r7d88mbk5/dghJOX3Ho=
+github.com/EduGoGroup/edugo-shared/repository v0.7.3 h1:vdGhmDNdu7XLwrvcHEQ8kljRjYYNVtwK3KhRPAGQKw4=
+github.com/EduGoGroup/edugo-shared/repository v0.7.3/go.mod h1:70RhGyzEK0pRUZ4FMowm5AkVNNasgs+hP/xjMVZjjic=
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/bytedance/gopkg v0.1.4 h1:oZnQwnX82KAIWb7033bEwtxvTqXcYMxDBaQxo5JJHWM=
