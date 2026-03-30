@@ -237,8 +237,16 @@ clean: ## Limpiar archivos generados
 	@rm -rf $(BUILD_DIR) $(COVERAGE_DIR)
 	@echo "$(GREEN)Limpieza completada$(RESET)"
 
+# ============================================
+# Release / Deploy
+# ============================================
+
+release-deploy: ## Crear nueva versión manual y desplegar a Azure interactivo
+	@echo "$(YELLOW)Iniciando flujo de Release & Deploy...$(RESET)"
+	@bash ./scripts/release_deploy.sh
+
 .PHONY: help build build-debug run run-local run-cloud dev dev-local dev-cloud \
         test-unit test-unit-local test-unit-cloud test-integration test-all test-all-local test-all-cloud \
         coverage-report coverage-check fmt vet lint audit deps tidy tools \
         swagger docker-build docker-up docker-down docker-logs ci \
-        dev-init dev-status clean
+        dev-init dev-status clean release-deploy
