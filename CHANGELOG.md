@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-03-31
+
+### Tipo de Release: patch
+
+- Add release-deploy Makefile target and script
+- update
+- update
+- update
+- fix(sync): return empty array instead of null for permissions in available_contexts
+- update
+- update
+
+---
+
 ## [0.25.0] - 2026-03-27
 
 ### Tipo de Release: patch
