@@ -4,25 +4,25 @@ go 1.25.0
 
 require (
 	github.com/EduGoGroup/edugo-infrastructure/postgres v0.77.1
-	github.com/EduGoGroup/edugo-shared/audit v0.1.0
-	github.com/EduGoGroup/edugo-shared/audit/postgres v0.1.3
-	github.com/EduGoGroup/edugo-shared/auth v0.54.0
-	github.com/EduGoGroup/edugo-shared/common v0.58.0
-	github.com/EduGoGroup/edugo-shared/logger v0.51.0
-	github.com/EduGoGroup/edugo-shared/metrics v0.3.0
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.56.3
-	github.com/EduGoGroup/edugo-shared/repository v0.7.3
+	github.com/EduGoGroup/edugo-shared/audit v0.100.0
+	github.com/EduGoGroup/edugo-shared/audit/postgres v0.100.0
+	github.com/EduGoGroup/edugo-shared/auth v0.100.0
+	github.com/EduGoGroup/edugo-shared/bootstrap v0.101.0
+	github.com/EduGoGroup/edugo-shared/bootstrap/postgres v0.101.0
+	github.com/EduGoGroup/edugo-shared/common v0.100.0
+	github.com/EduGoGroup/edugo-shared/logger v0.100.0
+	github.com/EduGoGroup/edugo-shared/metrics v0.100.0
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.100.0
+	github.com/EduGoGroup/edugo-shared/repository v0.100.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	golang.org/x/sync v0.20.0
-	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
 
@@ -52,6 +52,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.9.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
@@ -82,4 +83,5 @@ require (
 	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/postgres v1.6.0 // indirect
 )

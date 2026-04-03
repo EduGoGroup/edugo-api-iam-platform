@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
@@ -13,13 +14,7 @@ import (
 func CORSMiddleware(cfg *config.CORSConfig, environment string) gin.HandlerFunc {
 	allowedOrigins := parseCSV(cfg.AllowedOrigins)
 
-	hasWildcard := false
-	for _, allowed := range allowedOrigins {
-		if allowed == "*" {
-			hasWildcard = true
-			break
-		}
-	}
+	hasWildcard := slices.Contains(allowedOrigins, "*")
 
 	// Block wildcard CORS in non-development environments (fail closed: empty env is treated as non-development)
 	normalizedEnv := strings.ToLower(strings.TrimSpace(environment))
