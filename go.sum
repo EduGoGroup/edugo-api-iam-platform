@@ -16,8 +16,8 @@ github.com/EduGoGroup/edugo-shared/logger v0.100.0 h1:75nJ3eMum06SMHlf5uWvVkp/gE
 github.com/EduGoGroup/edugo-shared/logger v0.100.0/go.mod h1:MxMk6Yy4H7UrdwdO4H5CYvU6AFTBHc8IyiwSAHXCfPk=
 github.com/EduGoGroup/edugo-shared/metrics v0.100.0 h1:FHMV11335qwFPghYf2QbN2YRsxMsY5tKHqJ7xhruzfo=
 github.com/EduGoGroup/edugo-shared/metrics v0.100.0/go.mod h1:cW8Gq1Wo2V9ZpUgVKGyGfSAn2qkmw/bRuYrNCJuT1kw=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.101.0 h1:QAy6JaSDgvNwHSl0NBEVLSjsjxSr4r36vooH08x0NbI=
-github.com/EduGoGroup/edugo-shared/middleware/gin v0.101.0/go.mod h1:bMuh+UU7/X13UDIO0TkBnT5JcvE2YvV+B9qAFXnoTJQ=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.103.0 h1:oZIuXvPqbwC6afNyb3mfU0aKGfP9B20QyBNz2kSPq1g=
+github.com/EduGoGroup/edugo-shared/middleware/gin v0.103.0/go.mod h1:bMuh+UU7/X13UDIO0TkBnT5JcvE2YvV+B9qAFXnoTJQ=
 github.com/EduGoGroup/edugo-shared/repository v0.100.0 h1:HraI2YK23/v40Owj5Ui4+OSoBIz9vBVPSSuNbETxvPA=
 github.com/EduGoGroup/edugo-shared/repository v0.100.0/go.mod h1:70RhGyzEK0pRUZ4FMowm5AkVNNasgs+hP/xjMVZjjic=
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=
