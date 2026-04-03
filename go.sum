@@ -6,6 +6,10 @@ github.com/EduGoGroup/edugo-shared/audit/postgres v0.100.0 h1:xusHzct3d4h2wjFJHI
 github.com/EduGoGroup/edugo-shared/audit/postgres v0.100.0/go.mod h1:yOfSxBDLqx+GeCYPSa0Mt9CMlS1TkJzuh2wRPdFt2XM=
 github.com/EduGoGroup/edugo-shared/auth v0.100.0 h1:DCzxoQiZVq5IJ9OTImNmdjO+FVKVWL6haQdyiREGn8Q=
 github.com/EduGoGroup/edugo-shared/auth v0.100.0/go.mod h1:8WD6SIhd0XcPh+r0J5rIO+4DsP1BlIP+IlCgWvGid8c=
+github.com/EduGoGroup/edugo-shared/bootstrap v0.101.0 h1:/NFdkFyCVxx1BQLA0XEiMNLfdlcwysWb6GhMdiYvrMQ=
+github.com/EduGoGroup/edugo-shared/bootstrap v0.101.0/go.mod h1:tXOCq+b4+DjzOE16tLTvGM9SrLBVhz7nC+MQ10UEWsA=
+github.com/EduGoGroup/edugo-shared/bootstrap/postgres v0.101.0 h1:rMRnN8ZOXQNlRleAHA5Rvi6kAIROYRhG7Pcyt8wE/lg=
+github.com/EduGoGroup/edugo-shared/bootstrap/postgres v0.101.0/go.mod h1:wYgXjEy07IzuapWdaM53HJ2hdscvXSymhBFbSe0d5N0=
 github.com/EduGoGroup/edugo-shared/common v0.100.0 h1:Dxchu0ZoCAbAB8aD1FLrgHmflOfLK9uv66lsh3rPxyY=
 github.com/EduGoGroup/edugo-shared/common v0.100.0/go.mod h1:Y0TuHzMPyVYP/SJwH0bR9VpGqSBvuJtlzbCHAAmu9eM=
 github.com/EduGoGroup/edugo-shared/logger v0.100.0 h1:75nJ3eMum06SMHlf5uWvVkp/gEBg+e8msYhV9dUxTb4=
