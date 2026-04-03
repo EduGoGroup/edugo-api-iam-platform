@@ -115,7 +115,11 @@ func main() {
 	r.Use(gin.Recovery())
 
 	// CORS middleware
-	r.Use(middleware.CORSMiddleware(&cfg.CORS, cfg.Environment))
+	r.Use(ginmiddleware.CORSMiddleware(ginmiddleware.CORSConfig{
+		AllowedOrigins: cfg.CORS.AllowedOrigins,
+		AllowedMethods: cfg.CORS.AllowedMethods,
+		AllowedHeaders: cfg.CORS.AllowedHeaders,
+	}, cfg.Environment))
 
 	// Request logging middleware (request_id, structured logging)
 	r.Use(ginmiddleware.RequestLogging(slogLogger))
