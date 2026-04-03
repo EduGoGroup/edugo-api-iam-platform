@@ -12,7 +12,7 @@ require (
 	github.com/EduGoGroup/edugo-shared/common v0.100.0
 	github.com/EduGoGroup/edugo-shared/logger v0.100.0
 	github.com/EduGoGroup/edugo-shared/metrics v0.100.0
-	github.com/EduGoGroup/edugo-shared/middleware/gin v0.101.0
+	github.com/EduGoGroup/edugo-shared/middleware/gin v0.103.0
 	github.com/EduGoGroup/edugo-shared/repository v0.100.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gin-gonic/gin v1.12.0
