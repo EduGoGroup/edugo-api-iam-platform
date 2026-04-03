@@ -308,7 +308,7 @@ func (r *postgresUserRoleRepository) GetUserPermissions(ctx context.Context, use
 		INNER JOIN iam.role_permissions rp ON p.id = rp.permission_id
 		INNER JOIN iam.user_roles ur ON rp.role_id = ur.role_id
 		WHERE ur.user_id = ? AND ur.is_active = true AND p.is_active = true`
-	args := []interface{}{userID}
+	args := []any{userID}
 	if schoolID != nil {
 		query += ` AND ur.school_id = ?`
 		args = append(args, *schoolID)

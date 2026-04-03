@@ -129,13 +129,11 @@ func (s *authService) Login(ctx context.Context, email, password, clientIP, user
 	var failedCount int
 	var rateLimitErr error
 	var phase1 sync.WaitGroup
-	phase1.Add(1)
-	go func() {
-		defer phase1.Done()
+	phase1.Go(func() {
 		fc, err := s.loginAttemptRepo.CountFailedSince(ctx, email, time.Now().Add(-15*time.Minute))
 		failedCount = int(fc)
 		rateLimitErr = err
-	}()
+	})
 
 	// 1. Find user by email (runs concurrently with rate limit check)
 	user, err := s.userRepo.FindByEmail(ctx, email)

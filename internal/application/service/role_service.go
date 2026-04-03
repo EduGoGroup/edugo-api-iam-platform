@@ -120,7 +120,7 @@ func (s *roleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 		ResourceID:   role.ID.String(),
 		Severity:     audit.SeverityCritical,
 		Category:     audit.CategoryAdmin,
-		Metadata:     map[string]interface{}{"role_name": role.Name, "scope": role.Scope},
+		Metadata:     map[string]any{"role_name": role.Name, "scope": role.Scope},
 	})
 	s.logger.Info("entity created", "entity_type", "role", "entity_id", role.ID.String(), "name", role.Name)
 	return dto.ToRoleDTO(role), nil

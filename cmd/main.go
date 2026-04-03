@@ -12,13 +12,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
+
+	"github.com/EduGoGroup/edugo-shared/bootstrap"
+	pgbootstrap "github.com/EduGoGroup/edugo-shared/bootstrap/postgres"
 
 	"github.com/EduGoGroup/edugo-api-iam-platform/docs"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
@@ -66,48 +65,35 @@ func main() {
 	slog.SetDefault(slogLogger)
 	appLogger := logger.NewSlogAdapter(slogLogger)
 
-	// 3. Connect to PostgreSQL via GORM
-	// Use pgx with SimpleProtocol to disable prepared statement caching at the driver level.
-	// Neon's pooler (PgBouncer in transaction mode) does not support prepared statements,
-	// and pgx v5 caches them internally even when GORM's PrepareStmt is false.
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Postgres.Host, cfg.Database.Postgres.Port, cfg.Database.Postgres.User,
-		cfg.Database.Postgres.Password, cfg.Database.Postgres.Database, cfg.Database.Postgres.SSLMode)
+	// 3. Connect to PostgreSQL via GORM (using bootstrap/postgres factory)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	pgxConfig, err := pgx.ParseConfig(dsn)
-	if err != nil {
-		slog.Error("Error parsing PostgreSQL DSN", "error", err)
-		os.Exit(1)
-	}
-	pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-	pgxConfig.RuntimeParams["search_path"] = "auth,iam,academic,ui_config,public"
-
-	sqlDB := stdlib.OpenDB(*pgxConfig)
-	sqlDB.SetMaxOpenConns(cfg.Database.Postgres.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(cfg.Database.Postgres.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Hour)
-
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
-		Logger: gormLogger.New(
+	pgFactory := pgbootstrap.NewFactory()
+	gormDB, err := pgFactory.CreateGORMConnection(ctx, bootstrap.PostgreSQLConfig{
+		Host:            cfg.Database.Postgres.Host,
+		Port:            cfg.Database.Postgres.Port,
+		User:            cfg.Database.Postgres.User,
+		Password:        cfg.Database.Postgres.Password,
+		Database:        cfg.Database.Postgres.Database,
+		SSLMode:         cfg.Database.Postgres.SSLMode,
+		SearchPath:      "auth,iam,academic,ui_config,public",
+		MaxOpenConns:    cfg.Database.Postgres.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.Postgres.MaxIdleConns,
+		ConnMaxLifetime: time.Hour,
+	},
+		bootstrap.WithGORMLogger(gormlogger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			gormLogger.Config{
+			gormlogger.Config{
 				SlowThreshold:             500 * time.Millisecond,
-				LogLevel:                  gormLogger.Info,
+				LogLevel:                  gormlogger.Info,
 				IgnoreRecordNotFoundError: true,
 				Colorful:                  true,
 			},
-		),
-		PrepareStmt: false,
-	})
+		)),
+	)
 	if err != nil {
 		slog.Error("Error connecting to PostgreSQL via GORM", "error", err)
-		os.Exit(1)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := sqlDB.PingContext(ctx); err != nil {
-		slog.Error("Error pinging PostgreSQL", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("PostgreSQL connected successfully via GORM")
