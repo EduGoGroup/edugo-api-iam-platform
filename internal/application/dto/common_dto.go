@@ -7,12 +7,12 @@ type ErrorResponse struct {
 }
 
 type SuccessResponse struct {
-	Message string      `json:"message"`
-	Data    any `json:"data,omitempty"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 type PaginatedResponse struct {
-	Data       any    `json:"data"`
+	Data       any            `json:"data"`
 	Pagination PaginationMeta `json:"pagination"`
 }
 

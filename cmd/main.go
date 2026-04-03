@@ -22,7 +22,6 @@ import (
 	"github.com/EduGoGroup/edugo-api-iam-platform/docs"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/config"
 	"github.com/EduGoGroup/edugo-api-iam-platform/internal/container"
-	"github.com/EduGoGroup/edugo-api-iam-platform/internal/infrastructure/http/middleware"
 	auditpostgres "github.com/EduGoGroup/edugo-shared/audit/postgres"
 	"github.com/EduGoGroup/edugo-shared/auth"
 	"github.com/EduGoGroup/edugo-shared/common/types/enum"
@@ -125,7 +124,7 @@ func main() {
 	r.Use(ginmiddleware.RequestLogging(slogLogger))
 
 	// Error handler middleware
-	r.Use(middleware.ErrorHandler(appLogger))
+	r.Use(ginmiddleware.ErrorHandler(appLogger))
 
 	// Health check
 	r.GET("/health", c.HealthHandler.Health)
