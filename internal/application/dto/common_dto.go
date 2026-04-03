@@ -5,20 +5,3 @@ type ErrorResponse struct {
 	Code    string            `json:"code"`
 	Details map[string]string `json:"details,omitempty"`
 }
-
-type SuccessResponse struct {
-	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
-}
-
-type PaginatedResponse struct {
-	Data       any            `json:"data"`
-	Pagination PaginationMeta `json:"pagination"`
-}
-
-type PaginationMeta struct {
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	Total      int `json:"total"`
-	TotalPages int `json:"total_pages"`
-}
